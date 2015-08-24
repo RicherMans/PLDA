@@ -4,7 +4,7 @@
 #include <iterator>
 #include <fstream>
 #include <regex>
-#include "CovarianceStats.hpp"
+#include "src/CovarianceStats.hpp"
 #include "chtk.h"
 #include "Python.h"
 
