@@ -51,6 +51,7 @@ endif()
 
 find_package(Kaldi REQUIRED)
 find_package(PythonLibs REQUIRED)
+find_package(NumPy REQUIRED)
 
 add_definitions(-DDEBUG=0)
 add_definitions(-DNO_OUTPUT=0)
@@ -90,6 +91,7 @@ include_directories(
     ${ATLAS_INCLUDE_DIR}
     ${CHTK_DIR}
     ${PYTHON_INCLUDE_DIRS}
+    ${NUMPY_INCLUDE_DIRS}
     )
 
 

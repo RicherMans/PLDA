@@ -36,7 +36,7 @@ namespace chtk{
         template<typename T>
         std::vector<T> as_vec() {
     		const T* p = data<T>();
-	        return std::vector<T>(p, p+nsamples);
+	        return std::vector<T>(p, p+(nsamples*samplesize/4));
         }
 
 		std::shared_ptr<std::vector<char>> data_holder;

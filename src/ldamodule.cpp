@@ -5,31 +5,38 @@
 #include "transform/lda-estimate.h"
 #include "CovarianceStats.hpp"
 #include "chtk.h"
+//numpy library
+#include "numpy/arrayobject.h"
 
 namespace kaldi{
 
 
-template<typename T>
-std::map<std::string,T> pythondict_to_map(){
+class PyLDA
+{
+public:
+    PyLDA (){};
+    virtual ~PyLDA ();
 
-    }
+private:
+    Matrix<BaseFloat> lda_mat;
+};
 
 
 static PyObject* py_fitlda(PyObject* self,PyObject* args){
     PyObject* dict;
-    PyObject* ldaopts;
+    int targetdim;
     /* the O! parses for a Python object (listObj) checked
      *    to be of type PyList_Type */
-    if (! PyArg_ParseTuple( args, "O!|s", &PyDict_Type, &dict,&ldaopts)) return NULL;
+    if (! PyArg_ParseTuple( args, "O!i", &PyDict_Type, &dict,&targetdim)) return NULL;
     //Check if the given argument is really a dict
     PyDict_Check(dict);
-    auto numitems = PyDict_Size(dict);
+    auto numspeakers = PyDict_Size(dict);
     //equal to dict.items()
     PyObject* items = PyDict_Items(dict);
     //Variable to check if the sizes of the utterance for every key are consistent
     auto check_utts=0;
     LdaEstimate lda;
-    for (auto i = 0u; i < numitems; ++i) {
+    for (auto i = 0u; i < numspeakers; ++i) {
         PyObject* item = PyList_GetItem(items,i);
         PyObject* spk=PyTuple_GetItem(item,0);
         PyObject* values=PyTuple_GetItem(item,1);
@@ -51,22 +58,24 @@ static PyObject* py_fitlda(PyObject* self,PyObject* args){
         for (auto j = 0; j < num_utts; ++j) {
             PyObject *utt = PyList_GetItem(values,j);
             PyString_Check(utt);
-            const char* curvalue = PyString_AsString(utt);
+            const char* featurefilename = PyString_AsString(utt);
+
 
             try{
                 //Reads in the feature from the given file. We do not extend the feature ( hence the paremter 0 )
-                chtk::htkarray feature = chtk::htk_load(std::string(curvalue),0);
+                chtk::htkarray feature = chtk::htk_load(std::string(featurefilename),0);
                 //Samplesize is in bytes, so we need to divide it by 4 to get the actual dimension
                 auto featdim = feature.samplesize/4;
                 if(lda.Dim()==0){
-                    lda.Init(numitems,featdim);
+                    lda.Init(numspeakers,featdim);
                 }
                 //feat is just an temporarary vector , which is refilled for every sample
                 Vector<BaseFloat> feat(featdim);
-                std::vector<float> read_feats= feature.as_vec<float>();
+                std::vector<float> nsamples= feature.as_vec<float>();
                 //Copy the data of every sample into the Vector so that Kaldi can use it
-                for (auto k = 0u; k < read_feats.size(); k+=featdim) {
-                    std::copy(read_feats.begin()+k,read_feats.begin()+k+featdim,feat.Data());
+                for (auto k = 0u; k < nsamples.size(); k+=featdim) {
+                    std::copy(nsamples.begin()+k,nsamples.begin()+k+featdim,feat.Data());
+                    //Add the feature to the current speakers class
                     lda.Accumulate(feat,i);
                 }
             }catch(const std::exception &e){
@@ -75,18 +84,28 @@ static PyObject* py_fitlda(PyObject* self,PyObject* args){
             }
         }
     }
-    std::cerr << lda.NumClasses() << std::endl;
-    std::cerr << lda.Dim() << std::endl;
+    //Accumulation finsihed, now we process the transformation matrix
     LdaEstimateOptions opts;
-    opts.dim = 1;
+    opts.dim = targetdim;
     Matrix<BaseFloat> lda_mat;
-    Matrix<BaseFloat> full_lda_mat;
-    lda.Estimate(opts,&lda_mat,&full_lda_mat);
-    std::cerr << lda_mat << std::endl;
-    std::cerr << lda_mat.NumRows() << " " << lda_mat.NumCols() <<std::endl;
+    lda.Estimate(opts,&lda_mat);
+    //Transformation is stored in the lda_mat variable. We return a numpy array to the python script
+    int dimensions[2]={lda_mat.NumRows(),lda_mat.NumCols()};
+    PyArrayObject* result;
 
-    return Py_BuildValue("");
+    auto sizemat = lda_mat.NumRows() * lda_mat.NumCols();
+
+    //char *lda_mat_data=new char[sizemat]();
+    //std::copy(lda_mat.Data(),lda_mat.Data()+(sizemat),lda_mat_data);
+    //for (auto i = 0; i < sizemat; ++i) {
+        //std::cerr << lda_mat_data[i] <<std::endl;
+    //}
+    float a[9*39] ={3.};
+    result = (PyArrayObject *)PyArray_FromDimsAndData(2, dimensions, PyArray_DOUBLE,(char*)a);
+    return PyArray_Return(result);
 }
+
+
 
 /*
  *  * Bind Python function names to our C functions
@@ -102,6 +121,8 @@ static PyMethodDef libldaModule_methods[] = {
 extern "C" void initliblda()
 {
     (void) Py_InitModule("liblda", libldaModule_methods);
-
+    //For the numpy code, import_array needs to be called otherwise all functions are not defined of nump
+    //leading to a segfault whenever any is called
+    import_array();
 }
 }
