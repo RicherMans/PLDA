@@ -1,0 +1,10 @@
+from distutils.core import setup
+
+setup(name='liblda',
+        version='${PACKAGE_VERSION}',
+        package_dir={ '': '${CMAKE_CURRENT_SOURCE_DIR}'  },
+        packages=['liblda'],
+        package_data={
+            'liblda':['*']
+            },
+        )

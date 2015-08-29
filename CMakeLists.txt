@@ -3,11 +3,13 @@ project(LDAKaldi)
 
 
 
-set(COVAR_STATIC_LIB covarstats)
-
 set(LDA_STATIC_LIB lda)
 
-set(BINARY_DIR ${CMAKE_SOURCE_DIR}/bin/)
+set(PYTHONDIR ${CMAKE_SOURCE_DIR}/python)
+
+set(MODULE_NAME liblda)
+
+set(BINARY_DIR ${PYTHONDIR}/${MODULE_NAME}/)
 
 set(CHTK_DIR ${PROJECT_SOURCE_DIR}/chtk)
 
@@ -84,6 +86,8 @@ endif()
 
 set(LIBRARY_OUTPUT_PATH ${BINARY_DIR})
 
+add_subdirectory(python)
+
 include_directories(
     ${KALDI_SRC_DIR}
     ${PORTAUDIO_INCLUDE_DIR}
@@ -95,9 +99,6 @@ include_directories(
     )
 
 
-set(COVAR_HEADERS
-    ${SOURCE_DIR}/CovarianceStats.hpp
-    )
 
 set(PYCOVAR_SOURCES 
     ${SOURCE_DIR}/ldamodule.cpp)
@@ -105,18 +106,11 @@ set(PYCOVAR_SOURCES
 set(CHTK_SOURCES
     ${CHTK_DIR}/chtk.cpp)
 
-set(COVAR_SOURCES
-    ${SOURCE_DIR}/CovarianceStats.cpp
-    )
-
-add_library(${COVAR_STATIC_LIB} STATIC ${COVAR_HEADERS} ${COVAR_SOURCES})
-target_link_libraries(${COVAR_STATIC_LIB} dl m pthread z)
-
 add_library(chtk SHARED ${CHTK_SOURCES})
 target_link_libraries(chtk z)
 
 add_library(${LDA_STATIC_LIB} SHARED ${PYCOVAR_SOURCES})
 
-target_link_libraries(${LDA_STATIC_LIB} dl m pthread chtk ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES} ${PYTHON_LIBRARIES} ${COVAR_STATIC_LIB})
+target_link_libraries(${LDA_STATIC_LIB} dl m pthread chtk ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES} ${PYTHON_LIBRARIES} )
 #add_executable(${EXECUTABLE_NAME} ${EXECUTABLE_PATH})
 #target_link_libraries(${EXECUTABLE_NAME} dl m pthread ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES} ${COVAR_STATIC_LIB} ${PYTHON_LIBRARIES})

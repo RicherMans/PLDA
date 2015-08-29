@@ -3,27 +3,60 @@
 #include <string>
 #include <vector>
 #include "transform/lda-estimate.h"
-#include "CovarianceStats.hpp"
 #include "chtk.h"
 //numpy library
 #include "numpy/arrayobject.h"
+#include <cassert>
 
 namespace kaldi{
 
+template<typename T>
+T* pyvector_to_type(PyArrayObject* arrayin){
+    return (T*) arrayin->data;
+}
 
-class PyLDA
+template <std::size_t N>
+struct type_of_size
 {
-public:
-    PyLDA (){};
-    virtual ~PyLDA ();
-
-private:
-    Matrix<BaseFloat> lda_mat;
+    typedef char type[N];
 };
+
+template<typename T,std::size_t Size>
+typename type_of_size<Size>::type& sizeof_array_help(T(&)[Size]);
+
+//Define the sizeof function as a constant expression. We do not need to do this neceessarily
+#define sizeof_array(arr) sizeof(sizeof_array_help(arr))
+
+
+Matrix<BaseFloat> readFeatureFromPyString(PyObject* pyfeaturefilename){
+    try{
+        PyString_Check(pyfeaturefilename);
+        const char* featurefilename = PyString_AsString(pyfeaturefilename);
+        //Reads in the feature from the given file. We do not extend the feature ( hence the paremter 0 )
+        chtk::htkarray feature = chtk::htk_load(std::string(featurefilename),0);
+        //Samplesize is in bytes, so we need to divide it by 4 to get the actual dimension
+        auto featdim = feature.samplesize/4;
+        //feat is just an temporarary vector , which is refilled for every sample
+        Vector<BaseFloat> feat(featdim);
+        std::vector<float> nsamples= feature.as_vec<float>();
+        Matrix<BaseFloat> mat(nsamples.size()/featdim,featdim);
+        //Copy the data of every sample into the Vector so that Kaldi can use it
+        for (auto k = 0u; k < nsamples.size(); k+=featdim) {
+            std::copy(nsamples.begin()+k,nsamples.begin()+k+featdim,feat.Data());
+            mat.CopyRowFromVec(feat,k/featdim);
+        }
+        return mat;
+    }catch(const std::exception &e){
+        std::cerr << e.what();
+        throw e;
+    }
+}
+
 
 
 static PyObject* py_fitlda(PyObject* self,PyObject* args){
     PyObject* dict;
+    //Target dimension which is passed in the args
     int targetdim;
     /* the O! parses for a Python object (listObj) checked
      *    to be of type PyList_Type */
@@ -36,19 +69,12 @@ static PyObject* py_fitlda(PyObject* self,PyObject* args){
     //Variable to check if the sizes of the utterance for every key are consistent
     auto check_utts=0;
     LdaEstimate lda;
-    for (auto i = 0u; i < numspeakers; ++i) {
-        PyObject* item = PyList_GetItem(items,i);
+    for (auto spkid = 0u; spkid < numspeakers; ++spkid) {
+        PyObject* item = PyList_GetItem(items,spkid);
         PyObject* spk=PyTuple_GetItem(item,0);
         PyObject* values=PyTuple_GetItem(item,1);
         PyList_Check(values);
         auto num_utts=PyList_Size(values);
-        //if (i==0) {
-            //check_utts = num_utts;
-        //} else {
-            //if (check_utts != num_utts) {
-                //return PyErr_Format(PyExc_ValueError,"Size of lists inconsistent!");
-            //}
-        //}
         if (num_utts < 0){
             std::string err("Values need to be a list of features(string)!");
             return PyErr_Format(PyExc_ValueError,err.c_str());
@@ -57,52 +83,93 @@ static PyObject* py_fitlda(PyObject* self,PyObject* args){
         //The utterances for the speaker
         for (auto j = 0; j < num_utts; ++j) {
             PyObject *utt = PyList_GetItem(values,j);
-            PyString_Check(utt);
-            const char* featurefilename = PyString_AsString(utt);
-
-
-            try{
-                //Reads in the feature from the given file. We do not extend the feature ( hence the paremter 0 )
-                chtk::htkarray feature = chtk::htk_load(std::string(featurefilename),0);
-                //Samplesize is in bytes, so we need to divide it by 4 to get the actual dimension
-                auto featdim = feature.samplesize/4;
-                if(lda.Dim()==0){
-                    lda.Init(numspeakers,featdim);
-                }
-                //feat is just an temporarary vector , which is refilled for every sample
-                Vector<BaseFloat> feat(featdim);
-                std::vector<float> nsamples= feature.as_vec<float>();
-                //Copy the data of every sample into the Vector so that Kaldi can use it
-                for (auto k = 0u; k < nsamples.size(); k+=featdim) {
-                    std::copy(nsamples.begin()+k,nsamples.begin()+k+featdim,feat.Data());
-                    //Add the feature to the current speakers class
-                    lda.Accumulate(feat,i);
-                }
-            }catch(const std::exception &e){
-                std::cerr << e.what();
-                return PyErr_Format(PyExc_OSError,e.what());
+            //Feats stores in row major its data. In every row there is one feature vector.
+            const Matrix<BaseFloat> &feats = readFeatureFromPyString(utt);
+            //init lda at the first iteration
+            if(lda.Dim()==0){
+                lda.Init(numspeakers,feats.NumCols());
+            }
+            for (auto matind = 0; matind < feats.NumRows(); ++matind) {
+                SubVector<BaseFloat> feat(feats,matind);
+                lda.Accumulate(feat,spkid);
             }
         }
     }
     //Accumulation finsihed, now we process the transformation matrix
     LdaEstimateOptions opts;
     opts.dim = targetdim;
+    //The problem is that we cannot use stack allocated arrays, since they get destoryed after the function returns;
     Matrix<BaseFloat> lda_mat;
     lda.Estimate(opts,&lda_mat);
     //Transformation is stored in the lda_mat variable. We return a numpy array to the python script
-    int dimensions[2]={lda_mat.NumRows(),lda_mat.NumCols()};
+    npy_intp dimensions[2]={lda_mat.NumRows(),lda_mat.NumCols()};
+    //The result which we are going to return. Its a numpy array with lda_mat dimensions
     PyArrayObject* result;
 
-    auto sizemat = lda_mat.NumRows() * lda_mat.NumCols();
+    auto mat_size = lda_mat.NumRows() * lda_mat.NumCols();
 
-    //char *lda_mat_data=new char[sizemat]();
-    //std::copy(lda_mat.Data(),lda_mat.Data()+(sizemat),lda_mat_data);
-    //for (auto i = 0; i < sizemat; ++i) {
-        //std::cerr << lda_mat_data[i] <<std::endl;
-    //}
-    float a[9*39] ={3.};
-    result = (PyArrayObject *)PyArray_FromDimsAndData(2, dimensions, PyArray_DOUBLE,(char*)a);
+    //This seems to be rather stupid, but the problem is that kaldi stores its arrays, which are in
+    //the ->Data() pointer with an offset for the rows and cols. Therefore we cant directly copy the
+    //content of kaldi, rather than we need to store the result in a new array
+    float *retarr = new float[mat_size];
+    for (auto i = 0; i < lda_mat.NumRows(); ++i) {
+        auto curind = i*lda_mat.NumCols();
+        std::copy(lda_mat.RowData(i),lda_mat.RowData(i)+lda_mat.NumCols(),retarr+curind);
+    }
+    //Init a new python object with 2 dimensions and the datapointer
+    result = (PyArrayObject* )PyArray_SimpleNewFromData(2,dimensions,NPY_FLOAT,retarr);
+    //Usually python does only store a reference on the given pointer and does not own the data
+    //With this flag, we tell him to own the data and deallocate the data with the PyObject
+    result->flags |= NPY_ARRAY_OWNDATA;
+    //result = (PyArrayObject *)PyArray_FromDimsAndData(2, dimensions, PyArray_FLOAT,reinterpret_cast<char *> (lda_mat.Data()));
     return PyArray_Return(result);
+}
+
+
+static PyObject* py_predictlda(PyObject* self, PyObject* args){
+    //Filelist is a list of strings pointing to the feature files which are going to be read out
+    PyObject* filelist;
+    //pytrans is the transition matrix, stored as a numpy array
+    PyArrayObject* pytrans;
+    if (! PyArg_ParseTuple( args, "O!O!" ,&PyList_Type,&filelist,&PyArray_Type,&pytrans)) return NULL;
+    PyList_Check(filelist);
+
+
+    auto size = PyList_Size(filelist);
+    auto dim1 = pytrans->dimensions[0];
+    auto dim2 = pytrans->dimensions[1];
+    Matrix<BaseFloat> trans(dim1,dim2);
+    float *arr = pyvector_to_type<float>(pytrans);
+    for (auto i = 0; i < dim1; i++) {
+        auto beginind = i*dim2;
+        auto endind = (i+1)*dim2;
+        std::copy(arr+beginind,arr+endind,trans.RowData(i));
+    }
+
+    for (auto curfile = 0u; curfile < size; ++curfile) {
+        PyObject* pyfeaturename = PyList_GetItem(filelist,curfile);
+        const Matrix<BaseFloat> &feat = readFeatureFromPyString(pyfeaturename);
+        int32 transform_rows = trans.NumRows(),
+              transform_cols = trans.NumCols(),
+              feat_dim = feat.NumCols();
+        Matrix<BaseFloat> feat_out(feat.NumRows(), transform_rows);
+        if (transform_cols == feat_dim) {
+            feat_out.AddMatMat(1.0, feat, kNoTrans, trans, kTrans, 0.0);
+
+        } else if (transform_cols == feat_dim + 1) {
+            // append the implicit 1.0 to the input features.
+            SubMatrix<BaseFloat> linear_part(trans, 0, transform_rows, 0, feat_dim);
+            feat_out.AddMatMat(1.0, feat, kNoTrans, linear_part, kTrans, 0.0);
+            Vector<BaseFloat> offset(transform_rows);
+            offset.CopyColFromMat(trans, feat_dim);
+            feat_out.AddVecToRows(1.0, offset);
+        }else{
+            std::string err("Feature sizes do not match!");
+            return PyErr_Format(PyExc_ValueError,err.c_str());
+        }
+    }
+    return Py_BuildValue("");
+
 }
 
 
@@ -112,6 +179,7 @@ static PyObject* py_fitlda(PyObject* self,PyObject* args){
  *   */
 static PyMethodDef libldaModule_methods[] = {
     {"fitlda",py_fitlda,METH_VARARGS},
+    {"predictlda",py_predictlda,METH_VARARGS},
     {NULL, NULL}
 };
 
