@@ -28,10 +28,8 @@ typename type_of_size<Size>::type& sizeof_array_help(T(&)[Size]);
 #define sizeof_array(arr) sizeof(sizeof_array_help(arr))
 
 
-Matrix<BaseFloat> readFeatureFromPyString(PyObject* pyfeaturefilename){
-    try{
-        PyString_Check(pyfeaturefilename);
-        const char* featurefilename = PyString_AsString(pyfeaturefilename);
+Matrix<BaseFloat> readFeatureFromChar(const char* featurefilename){
+     try{
         //Reads in the feature from the given file. We do not extend the feature ( hence the paremter 0 )
         chtk::htkarray feature = chtk::htk_load(std::string(featurefilename),0);
         //Samplesize is in bytes, so we need to divide it by 4 to get the actual dimension
@@ -49,6 +47,28 @@ Matrix<BaseFloat> readFeatureFromPyString(PyObject* pyfeaturefilename){
     }catch(const std::exception &e){
         std::cerr << e.what();
         throw e;
+    }
+
+}
+Matrix<BaseFloat> readFeatureFromPyString(PyObject* pyfeaturefilename){
+    try{
+        PyString_Check(pyfeaturefilename);
+        const char* featurefilename = PyString_AsString(pyfeaturefilename);
+        //Reads in the feature from the given file. We do not extend the feature ( hence the paremter 0 )
+        return readFeatureFromChar(featurefilename);
+    }catch(const std::exception &e){
+        std::cerr << e.what();
+        throw e;
+    }
+}
+
+
+template<typename T>
+void k_matrix_to_array(Matrix<BaseFloat>& inpmat,T* retarr){
+    //Copies the vector of inpmat into the array retarr. Please verify that the sizes match!
+    for (auto i = 0; i < inpmat.NumRows(); ++i) {
+        auto curind = i*inpmat.NumCols();
+        std::copy(inpmat.RowData(i),inpmat.RowData(i)+inpmat.NumCols(),retarr+curind);
     }
 }
 
@@ -127,15 +147,12 @@ static PyObject* py_fitlda(PyObject* self,PyObject* args){
 
 
 static PyObject* py_predictlda(PyObject* self, PyObject* args){
-    //Filelist is a list of strings pointing to the feature files which are going to be read out
-    PyObject* filelist;
+    const char* featurefilename;
     //pytrans is the transition matrix, stored as a numpy array
     PyArrayObject* pytrans;
-    if (! PyArg_ParseTuple( args, "O!O!" ,&PyList_Type,&filelist,&PyArray_Type,&pytrans)) return NULL;
-    PyList_Check(filelist);
+    if (! PyArg_ParseTuple( args, "sO!", &featurefilename,&PyArray_Type,&pytrans)) return NULL;
 
 
-    auto size = PyList_Size(filelist);
     auto dim1 = pytrans->dimensions[0];
     auto dim2 = pytrans->dimensions[1];
     Matrix<BaseFloat> trans(dim1,dim2);
@@ -146,29 +163,36 @@ static PyObject* py_predictlda(PyObject* self, PyObject* args){
         std::copy(arr+beginind,arr+endind,trans.RowData(i));
     }
 
-    for (auto curfile = 0u; curfile < size; ++curfile) {
-        PyObject* pyfeaturename = PyList_GetItem(filelist,curfile);
-        const Matrix<BaseFloat> &feat = readFeatureFromPyString(pyfeaturename);
-        int32 transform_rows = trans.NumRows(),
-              transform_cols = trans.NumCols(),
-              feat_dim = feat.NumCols();
-        Matrix<BaseFloat> feat_out(feat.NumRows(), transform_rows);
-        if (transform_cols == feat_dim) {
-            feat_out.AddMatMat(1.0, feat, kNoTrans, trans, kTrans, 0.0);
-
-        } else if (transform_cols == feat_dim + 1) {
-            // append the implicit 1.0 to the input features.
-            SubMatrix<BaseFloat> linear_part(trans, 0, transform_rows, 0, feat_dim);
-            feat_out.AddMatMat(1.0, feat, kNoTrans, linear_part, kTrans, 0.0);
-            Vector<BaseFloat> offset(transform_rows);
-            offset.CopyColFromMat(trans, feat_dim);
-            feat_out.AddVecToRows(1.0, offset);
-        }else{
-            std::string err("Feature sizes do not match!");
-            return PyErr_Format(PyExc_ValueError,err.c_str());
-        }
+    const Matrix<BaseFloat> &feat = readFeatureFromChar(featurefilename);
+    int32 transform_rows = trans.NumRows(),
+          transform_cols = trans.NumCols(),
+          feat_dim = feat.NumCols();
+    Matrix<BaseFloat> feat_out(feat.NumRows(), transform_rows);
+    if (transform_cols == feat_dim) {
+        feat_out.AddMatMat(1.0, feat, kNoTrans, trans, kTrans, 0.0);
+    } else if (transform_cols == feat_dim + 1) {
+        // append the implicit 1.0 to the input features.
+        SubMatrix<BaseFloat> linear_part(trans, 0, transform_rows, 0, feat_dim);
+        feat_out.AddMatMat(1.0, feat, kNoTrans, linear_part, kTrans, 0.0);
+        Vector<BaseFloat> offset(transform_rows);
+        offset.CopyColFromMat(trans, feat_dim);
+        feat_out.AddVecToRows(1.0, offset);
+    }else{
+        std::string err("Feature sizes do not match!");
+        return PyErr_Format(PyExc_ValueError,err.c_str());
     }
-    return Py_BuildValue("");
+    float *retarr = new float[feat_out.NumRows()*feat_out.NumCols()];
+    k_matrix_to_array(feat_out,retarr);
+
+    //Transformation is stored in the lda_mat variable. We return a numpy array to the python script
+    npy_intp dimensions[2]={feat_out.NumRows(),feat_out.NumCols()};
+
+    PyArrayObject* result = (PyArrayObject* )PyArray_SimpleNewFromData(2,dimensions,NPY_FLOAT,retarr);
+    //Usually python does only store a reference on the given pointer and does not own the data
+    //With this flag, we tell him to own the data and deallocate the data with the PyObject
+    result->flags |= NPY_ARRAY_OWNDATA;
+
+    return PyArray_Return(result);
 
 }
 
