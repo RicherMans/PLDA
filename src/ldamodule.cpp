@@ -114,6 +114,8 @@ static PyObject* py_fitlda(PyObject* self,PyObject* args){
                 lda.Accumulate(feat,spkid);
             }
         }
+        //Cancel the operation of keyboardinterrupt is called
+        PyErr_CheckSignals();
     }
     //Accumulation finsihed, now we process the transformation matrix
     LdaEstimateOptions opts;
