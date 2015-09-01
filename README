@@ -1,0 +1,37 @@
+=== A simple library to run LDA ===
+With this library LDA can be run. The library provides overall just two simple methods to estimate
+and predict an LDA classifier.
+
+=== Installation ===
+
+Make sure you have the variable KALDI_ROOT set in your path.
+Otherwise:
+
+export KALDI_ROOT=/YOUTPATH/TO/KALDI/ROOT
+
+then just build the libraries:
+
+mkdir build
+cd build
+cmake ../
+make
+
+The installation process compiles a shared library and drops it into the local users python path.
+
+To use it, please just write any python script:
+
+import liblda
+
+lda = liblda.LDA()
+
+#Estimate an LDA model
+lda.fit(spktoutts,targetdim)
+
+
+transformedutt = lda.fit(pathtoutt)
+
+Make sure that spktoutts is a dict where the keys represent the speaker model and the values
+represent all the utterances belonging to that speaker. Therefore it is a dict with strings
+as keys and a list as values.
+
+

@@ -72,11 +72,15 @@ void k_matrix_to_array(const Matrix<BaseFloat>& inpmat,T* retarr){
     }
 }
 
+template<typename T>
 Matrix<BaseFloat> pyarraytomatrix(PyArrayObject* pytrans){
     auto dim1 = pytrans->dimensions[0];
     auto dim2 = pytrans->dimensions[1];
     Matrix<BaseFloat> trans(dim1,dim2);
-    float *arr = pyvector_to_type<float>(pytrans);
+    T *arr = pyvector_to_type<T>(pytrans);
+    //for (int i = 0; i < dim1; i++) {
+        //std::cerr << arr[i] << std::endl;
+    //}
     for (auto i = 0; i < dim1; i++) {
         auto beginind = i*dim2;
         auto endind = (i+1)*dim2;
@@ -100,8 +104,9 @@ Matrix<BaseFloat> transform(const Matrix<BaseFloat> &feat,const Matrix<BaseFloat
         offset.CopyColFromMat(trans, feat_dim);
         feat_out.AddVecToRows(1.0, offset);
     }else{
-        std::string err("Feature sizes do not match!");
-        throw std::runtime_error(err);
+        std::stringstream errmsg;
+        errmsg << "Feature sizes do not match!\n" << "Feature dim:" <<feat_dim << "\t\tTransform dim: "<<transform_cols;
+        throw std::runtime_error(errmsg.str());
     }
     return feat_out;
 }
@@ -186,11 +191,13 @@ static PyObject* py_predictldafromarray(PyObject* self,PyObject* args){
 
     if (! PyArg_ParseTuple( args, "O!O!", &PyArray_Type,&pyinputfeat,&PyArray_Type,&pytrans)) return NULL;
 
-    const Matrix<BaseFloat>& trans = pyarraytomatrix(pytrans);
-    const Matrix<BaseFloat>& feat = pyarraytomatrix(pyinputfeat);
+    const Matrix<BaseFloat>& trans = pyarraytomatrix<float>(pytrans);
+    const Matrix<BaseFloat>& feat = pyarraytomatrix<double>(pyinputfeat);
+
 
     const Matrix<BaseFloat>& feat_out = transform(feat,trans);
 
+    //std::cerr << feat_out << std::endl;
     float *retarr = new float[feat_out.NumRows()*feat_out.NumCols()];
     k_matrix_to_array(feat_out,retarr);
 
@@ -213,28 +220,10 @@ static PyObject* py_predictldafromutterance(PyObject* self, PyObject* args){
     if (! PyArg_ParseTuple( args, "sO!", &featurefilename,&PyArray_Type,&pytrans)) return NULL;
 
 
-    const Matrix<BaseFloat> &trans = pyarraytomatrix(pytrans);
+    const Matrix<BaseFloat> &trans = pyarraytomatrix<float>(pytrans);
 
     const Matrix<BaseFloat> &feat = readFeatureFromChar(featurefilename);
-
     const Matrix<BaseFloat> &feat_out = transform(feat,trans);
-    //int32 transform_rows = trans.NumRows(),
-          //transform_cols = trans.NumCols(),
-          //feat_dim = feat.NumCols();
-    //Matrix<BaseFloat> feat_out(feat.NumRows(), transform_rows);
-    //if (transform_cols == feat_dim) {
-        //feat_out.AddMatMat(1.0, feat, kNoTrans, trans, kTrans, 0.0);
-    //} else if (transform_cols == feat_dim + 1) {
-         //append the implicit 1.0 to the input features.
-        //SubMatrix<BaseFloat> linear_part(trans, 0, transform_rows, 0, feat_dim);
-        //feat_out.AddMatMat(1.0, feat, kNoTrans, linear_part, kTrans, 0.0);
-        //Vector<BaseFloat> offset(transform_rows);
-        //offset.CopyColFromMat(trans, feat_dim);
-        //feat_out.AddVecToRows(1.0, offset);
-    //}else{
-        //std::string err("Feature sizes do not match!");
-        //return PyErr_Format(PyExc_ValueError,err.c_str());
-    //}
     PyErr_CheckSignals();
     float *retarr = new float[feat_out.NumRows()*feat_out.NumCols()];
     k_matrix_to_array(feat_out,retarr);
