@@ -1,4 +1,4 @@
-from liblda import fitlda,predictlda
+from liblda import fitlda,predictldafromutterance,predictldafromarray
 
 # the LDA class can be used by simply initzialize it and use the fit and predict parameters
 class LDA():
@@ -17,4 +17,11 @@ class LDA():
         '''
         if self._ldamat is None:
             raise ValueError("THe method .fit needs to be called before predict!")
-        return predictlda(featurefile,self._ldamat)
+        return predictldafromutterance(featurefile,self._ldamat)
+
+
+    def predictmat(self,featuremat):
+
+        if self._ldamat is None:
+            raise ValueError("THe method .fit needs to be called before predict!")
+        return predictldafromarray(featuremat,self._ldamat)

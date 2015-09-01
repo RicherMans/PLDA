@@ -64,7 +64,7 @@ Matrix<BaseFloat> readFeatureFromPyString(PyObject* pyfeaturefilename){
 
 
 template<typename T>
-void k_matrix_to_array(Matrix<BaseFloat>& inpmat,T* retarr){
+void k_matrix_to_array(const Matrix<BaseFloat>& inpmat,T* retarr){
     //Copies the vector of inpmat into the array retarr. Please verify that the sizes match!
     for (auto i = 0; i < inpmat.NumRows(); ++i) {
         auto curind = i*inpmat.NumCols();
@@ -72,7 +72,39 @@ void k_matrix_to_array(Matrix<BaseFloat>& inpmat,T* retarr){
     }
 }
 
+Matrix<BaseFloat> pyarraytomatrix(PyArrayObject* pytrans){
+    auto dim1 = pytrans->dimensions[0];
+    auto dim2 = pytrans->dimensions[1];
+    Matrix<BaseFloat> trans(dim1,dim2);
+    float *arr = pyvector_to_type<float>(pytrans);
+    for (auto i = 0; i < dim1; i++) {
+        auto beginind = i*dim2;
+        auto endind = (i+1)*dim2;
+        std::copy(arr+beginind,arr+endind,trans.RowData(i));
+    }
+    return trans;
+}
 
+Matrix<BaseFloat> transform(const Matrix<BaseFloat> &feat,const Matrix<BaseFloat> &trans){
+    int32 transform_rows = trans.NumRows(),
+          transform_cols = trans.NumCols(),
+          feat_dim = feat.NumCols();
+    Matrix<BaseFloat> feat_out(feat.NumRows(), transform_rows);
+    if (transform_cols == feat_dim) {
+        feat_out.AddMatMat(1.0, feat, kNoTrans, trans, kTrans, 0.0);
+    } else if (transform_cols == feat_dim + 1) {
+        // append the implicit 1.0 to the input features.
+        SubMatrix<BaseFloat> linear_part(trans, 0, transform_rows, 0, feat_dim);
+        feat_out.AddMatMat(1.0, feat, kNoTrans, linear_part, kTrans, 0.0);
+        Vector<BaseFloat> offset(transform_rows);
+        offset.CopyColFromMat(trans, feat_dim);
+        feat_out.AddVecToRows(1.0, offset);
+    }else{
+        std::string err("Feature sizes do not match!");
+        throw std::runtime_error(err);
+    }
+    return feat_out;
+}
 
 static PyObject* py_fitlda(PyObject* self,PyObject* args){
     PyObject* dict;
@@ -148,41 +180,62 @@ static PyObject* py_fitlda(PyObject* self,PyObject* args){
 }
 
 
-static PyObject* py_predictlda(PyObject* self, PyObject* args){
+static PyObject* py_predictldafromarray(PyObject* self,PyObject* args){
+    PyArrayObject *pytrans;
+    PyArrayObject* pyinputfeat;
+
+    if (! PyArg_ParseTuple( args, "O!O!", &PyArray_Type,&pyinputfeat,&PyArray_Type,&pytrans)) return NULL;
+
+    const Matrix<BaseFloat>& trans = pyarraytomatrix(pytrans);
+    const Matrix<BaseFloat>& feat = pyarraytomatrix(pyinputfeat);
+
+    const Matrix<BaseFloat>& feat_out = transform(feat,trans);
+
+    float *retarr = new float[feat_out.NumRows()*feat_out.NumCols()];
+    k_matrix_to_array(feat_out,retarr);
+
+    //Transformation is stored in the lda_mat variable. We return a numpy array to the python script
+    npy_intp dimensions[2]={feat_out.NumRows(),feat_out.NumCols()};
+
+    PyArrayObject* result = (PyArrayObject* )PyArray_SimpleNewFromData(2,dimensions,NPY_FLOAT,retarr);
+    //Usually python does only store a reference on the given pointer and does not own the data
+    //With this flag, we tell him to own the data and deallocate the data with the PyObject
+    result->flags |= NPY_ARRAY_OWNDATA;
+
+    return PyArray_Return(result);
+}
+
+
+static PyObject* py_predictldafromutterance(PyObject* self, PyObject* args){
     const char* featurefilename;
     //pytrans is the transition matrix, stored as a numpy array
     PyArrayObject* pytrans;
     if (! PyArg_ParseTuple( args, "sO!", &featurefilename,&PyArray_Type,&pytrans)) return NULL;
 
 
-    auto dim1 = pytrans->dimensions[0];
-    auto dim2 = pytrans->dimensions[1];
-    Matrix<BaseFloat> trans(dim1,dim2);
-    float *arr = pyvector_to_type<float>(pytrans);
-    for (auto i = 0; i < dim1; i++) {
-        auto beginind = i*dim2;
-        auto endind = (i+1)*dim2;
-        std::copy(arr+beginind,arr+endind,trans.RowData(i));
-    }
+    const Matrix<BaseFloat> &trans = pyarraytomatrix(pytrans);
 
     const Matrix<BaseFloat> &feat = readFeatureFromChar(featurefilename);
-    int32 transform_rows = trans.NumRows(),
-          transform_cols = trans.NumCols(),
-          feat_dim = feat.NumCols();
-    Matrix<BaseFloat> feat_out(feat.NumRows(), transform_rows);
-    if (transform_cols == feat_dim) {
-        feat_out.AddMatMat(1.0, feat, kNoTrans, trans, kTrans, 0.0);
-    } else if (transform_cols == feat_dim + 1) {
-        // append the implicit 1.0 to the input features.
-        SubMatrix<BaseFloat> linear_part(trans, 0, transform_rows, 0, feat_dim);
-        feat_out.AddMatMat(1.0, feat, kNoTrans, linear_part, kTrans, 0.0);
-        Vector<BaseFloat> offset(transform_rows);
-        offset.CopyColFromMat(trans, feat_dim);
-        feat_out.AddVecToRows(1.0, offset);
-    }else{
-        std::string err("Feature sizes do not match!");
-        return PyErr_Format(PyExc_ValueError,err.c_str());
-    }
+
+    const Matrix<BaseFloat> &feat_out = transform(feat,trans);
+    //int32 transform_rows = trans.NumRows(),
+          //transform_cols = trans.NumCols(),
+          //feat_dim = feat.NumCols();
+    //Matrix<BaseFloat> feat_out(feat.NumRows(), transform_rows);
+    //if (transform_cols == feat_dim) {
+        //feat_out.AddMatMat(1.0, feat, kNoTrans, trans, kTrans, 0.0);
+    //} else if (transform_cols == feat_dim + 1) {
+         //append the implicit 1.0 to the input features.
+        //SubMatrix<BaseFloat> linear_part(trans, 0, transform_rows, 0, feat_dim);
+        //feat_out.AddMatMat(1.0, feat, kNoTrans, linear_part, kTrans, 0.0);
+        //Vector<BaseFloat> offset(transform_rows);
+        //offset.CopyColFromMat(trans, feat_dim);
+        //feat_out.AddVecToRows(1.0, offset);
+    //}else{
+        //std::string err("Feature sizes do not match!");
+        //return PyErr_Format(PyExc_ValueError,err.c_str());
+    //}
+    PyErr_CheckSignals();
     float *retarr = new float[feat_out.NumRows()*feat_out.NumCols()];
     k_matrix_to_array(feat_out,retarr);
 
@@ -205,7 +258,8 @@ static PyObject* py_predictlda(PyObject* self, PyObject* args){
  *   */
 static PyMethodDef libldaModule_methods[] = {
     {"fitlda",py_fitlda,METH_VARARGS},
-    {"predictlda",py_predictlda,METH_VARARGS},
+    {"predictldafromutterance",py_predictldafromutterance,METH_VARARGS},
+    {"predictldafromarray",py_predictldafromarray,METH_VARARGS},
     {NULL, NULL}
 };
 
