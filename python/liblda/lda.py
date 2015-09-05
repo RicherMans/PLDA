@@ -1,8 +1,105 @@
 import numpy as np
 from scipy.misc import logsumexp
-from liblda import fitlda, predictldafromutterance, predictldafromarray, getstats, getclassmeans
+from liblda import predictldafromutterance, predictldafromarray, getstats, getclassmeans, fitldafromdata, estimate
 # the LDA class can be used by simply initzialize it and use the fit and
 # predict parameters
+
+
+# def empirical_covariance(X, assume_centered=False):
+#     """Computes the Maximum likelihood covariance estimator
+#     Parameters
+#     ----------
+#     X : ndarray, shape (n_samples, n_features)
+#         Data from which to compute the covariance estimate
+#     assume_centered : Boolean
+#         If True, data are not centered before computation.
+#         Useful when working with data whose mean is almost, but not exactly
+#         zero.
+#         If False, data are centered before computation.
+#     Returns
+#     -------
+#     covariance : 2D ndarray, shape (n_features, n_features)
+#         Empirical covariance (Maximum Likelihood Estimator).
+#     """
+#     X = np.asarray(X)
+#     if X.ndim == 1:
+#         X = np.reshape(X, (1, -1))
+
+#     if assume_centered:
+#         covariance = np.dot(X.T, X) / X.shape[0]
+#     else:
+#         covariance = np.cov(X.T, bias=1)
+
+#     return covariance
+
+
+# def _cov(X, shrinkage=None):
+#     """Estimate covariance matrix (using optional shrinkage).
+#     Parameters
+#     ----------
+#     X : array-like, shape (n_samples, n_features)
+#         Input data.
+#     shrinkage : string or float, optional
+#         Shrinkage parameter, possible values:
+#           - None or 'empirical': no shrinkage (default).
+#           - 'auto': automatic shrinkage using the Ledoit-Wolf lemma.
+#           - float between 0 and 1: fixed shrinkage parameter.
+#     Returns
+#     -------
+#     s : array, shape (n_features, n_features)
+#         Estimated covariance matrix.
+#     """
+#     s = empirical_covariance(X)
+#     return s
+
+
+# def _class_means(X, y):
+#     """Compute class means.
+#     Parameters
+#     ----------
+#     X : array-like, shape (n_samples, n_features)
+#         Input data.
+#     y : array-like, shape (n_samples,) or (n_samples, n_targets)
+#         Target values.
+#     Returns
+#     -------
+#     means : array-like, shape (n_features,)
+#         Class means.
+#     """
+#     means = []
+#     classes = np.unique(y)
+#     for group in classes:
+#         Xg = X[y == group, :]
+#         means.append(Xg.mean(0))
+#     return np.asarray(means)
+
+
+# def _class_cov(X, y, priors=None, shrinkage=None):
+#     """Compute class covariance matrix.
+#     Parameters
+#     ----------
+#     X : array-like, shape (n_samples, n_features)
+#         Input data.
+#     y : array-like, shape (n_samples,) or (n_samples, n_targets)
+#         Target values.
+#     priors : array-like, shape (n_classes,)
+#         Class priors.
+#     shrinkage : string or float, optional
+#         Shrinkage parameter, possible values:
+#           - None: no shrinkage (default).
+#           - 'auto': automatic shrinkage using the Ledoit-Wolf lemma.
+#           - float between 0 and 1: fixed shrinkage parameter.
+#     Returns
+#     -------
+#     cov : array-like, shape (n_features, n_features)
+#         Class covariance matrix.
+#     """
+#     classes = np.unique(y)
+#     covs = []
+#     for group in classes:
+#         Xg = X[y == group, :]
+#         covs.append(np.atleast_2d(_cov(Xg)))
+#     return np.average(covs, axis=0)
 
 
 class LDA():
@@ -21,24 +118,31 @@ class LDA():
         self.priors = priors
         self.solver = solver
 
-    def fit(self, flist, dim):
+    def fit(self, features, labels):
         '''
-        Estimates an LDA matrix from the given flist and transforms that matrix to dimension dim
-        flist is a dict where the keys are the given speakers ( how many classes there are  ) and
-        the values correspond to the HTK type features as paths
+        Function: fit
+        Summary: Estimates the statistics needed to transform or to do any decisions for the given dataset in features
+        Examples:
+        Attributes:
+            @param (self):
+            @param (features):np.array with dimensions (n_samples,feat_dim), which will be used to estimate the statistics
+            @param (labels):np.array with dimensions (n_samples,) , where each value represents a speaker id, corresponding to the
+            features array!
+        Returns: None
         '''
-        # Estimate the lda transformation matrix and also get the bins for
-        # estimating the priors
-        self._ldamat, _bins = fitlda(flist, dim, transform=False)
+        # Accumulate the statistics
+        fitldafromdata(features, labels)
         # Get the statistics from the fitted model
         _, self._tot_cov, self._bet_cov, self._n_samples = getstats()
         self._means = getclassmeans()
         self._covariance = self._tot_cov - self._bet_cov
+        # print self._covariance
+        # print _class_cov(features, labels)
+        # print self._covariance
         # print self._means
         if self.priors is None:
-            _, self._bins = np.unique(_bins, return_inverse=True)
+            _, self._bins = np.unique(labels, return_inverse=True)
             self.priors_ = np.bincount(self._bins) / float(self._n_samples)
-        # self.covariance_ = _class_cov(X, y, self.priors_)
         if self.solver == 'lsqr':
             self._leastsquares()
 
@@ -46,9 +150,6 @@ class LDA():
         return getstats()
 
     def _leastsquares(self):
-        if self._ldamat is None:
-            raise ValueError(
-                "THe method .fit needs to be called before getting any statistics!")
         self._coef = np.linalg.lstsq(self._covariance, self._means.T)[0].T
         self.intercept_ = (-0.5 * np.diag(np.dot(self._means, self._coef.T))
                            + np.log(self.priors_))
@@ -121,17 +222,13 @@ class LDA():
         normalizationconstant = logsumexp(llk, axis=1)
         return llk - normalizationconstant[:, np.newaxis]
 
-    def transform(self, featurefile):
+    def transform(self, featurefile, targetdim):
         '''
         Predicts for the given file given as f
         '''
-        if self._ldamat is None or len(self._ldamat) == 0:
-            raise ValueError(
-                "THe method .fit needs to be called before predict (with parameter transform = true)!")
-        return predictldafromutterance(featurefile, self._ldamat)
+        ldamat = estimate(targetdim)
+        return predictldafromutterance(featurefile, ldamat)
 
-    def transformmat(self, featuremat):
-        if self._ldamat is None or len(self._ldamat) == 0:
-            raise ValueError(
-                "THe method .fit needs to be called before predict (with parameter transform = true)!")
-        return predictldafromarray(featuremat, self._ldamat)
+    def transformmat(self, featuremat, targetdim):
+        ldamat = estimate(targetdim)
+        return predictldafromarray(featuremat, ldamat)

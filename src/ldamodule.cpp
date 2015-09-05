@@ -1,8 +1,11 @@
 #include <Python.h>
 #include <iostream>
 #include <string>
+#include <iterator>
 #include <vector>
 #include "chtk.h"
+#include <algorithm>
+#include <set>
 //numpy library
 #include "numpy/arrayobject.h"
 #include <cassert>
@@ -72,7 +75,7 @@ void k_matrix_to_array(const MatrixBase<T>& inpmat,T* retarr){
         std::copy(inpmat.RowData(i),inpmat.RowData(i)+inpmat.NumCols(),retarr+curind);
     }
 }
-
+//Packed matrix overload, packed matrix are triangular matrices
 template<typename T>
 void k_matrix_to_array(const PackedMatrix<T>& inpmat,T* retarr){
     //Copies the vector of inpmat into the array retarr. Please verify that the sizes match!
@@ -126,6 +129,17 @@ Matrix<BaseFloat> pyarraytomatrix(PyArrayObject* pytrans){
     return trans;
 }
 
+
+
+template<typename T>
+Vector<T> pyarraytovector(PyArrayObject* pytrans){
+    auto dim1 = pytrans->dimensions[0];
+    Vector<T> out(dim1);
+    T *arr = pyvector_to_type<T>(pytrans);
+    std::copy(arr,arr+dim1,out.Data());
+    return out;
+}
+
 Matrix<BaseFloat> transform(const Matrix<BaseFloat> &feat,const Matrix<BaseFloat> &trans){
     int32 transform_rows = trans.NumRows(),
           transform_cols = trans.NumCols(),
@@ -146,6 +160,78 @@ Matrix<BaseFloat> transform(const Matrix<BaseFloat> &feat,const Matrix<BaseFloat
         throw std::runtime_error(errmsg.str());
     }
     return feat_out;
+}
+
+//Estimates the transform matrix for LDA
+static PyObject* py_estimate(PyObject* self,PyObject* args){
+
+    int targetdim;
+    if (! PyArg_ParseTuple( args, "i",&targetdim )) return NULL;
+
+    LDA *lda = LDA::getInstance();
+    //Accumulation finsihed, now we process the transformation matrix
+    LdaEstimateOptions opts;
+    opts.dim = targetdim;
+    //the lda transformation matrix, it can be used to do dimensionality reduction
+    Matrix<BaseFloat> lda_mat;
+    lda->estimate(opts,&lda_mat);
+    //Transformation is stored in the lda_mat variable. We return a numpy array to the python script
+    npy_intp dimensions[2]={lda_mat.NumRows(),lda_mat.NumCols()};
+
+    auto mat_size = lda_mat.NumRows() * lda_mat.NumCols();
+
+    //This seems to be rather stupid, but the problem is that kaldi stores its arrays, which are in
+    //the ->Data() pointer with an offset for the rows and cols. Therefore we cant directly copy the
+    //content of kaldi, rather than we need to store the result in a new array
+    float *retarr = new float[mat_size];
+    for (auto i = 0; i < lda_mat.NumRows(); ++i) {
+        auto curind = i*lda_mat.NumCols();
+        std::copy(lda_mat.RowData(i),lda_mat.RowData(i)+lda_mat.NumCols(),retarr+curind);
+    }
+    //Init a new python object with 2 dimensions and the datapointer
+    PyArrayObject* lda_result_mat = (PyArrayObject* )PyArray_SimpleNewFromData(2,dimensions,NPY_FLOAT,retarr);
+    //Usually python does only store a reference on the given pointer and does not own the data
+    //With this flag, we tell him to own the data and deallocate the data with the PyObject
+    lda_result_mat->flags |= NPY_ARRAY_OWNDATA;
+
+    return PyArray_Return(lda_result_mat);
+}
+
+
+static PyObject* py_fitldafromdata(PyObject* self,PyObject* args){
+    //From the given data as features with dimensions (nsamples,featdim ) and labels as (nsamples,)
+    //we estimate the statistics.
+    //The labels values indicate which label is given for each sample in nsamples
+    PyArrayObject* py_inputfeats;
+    PyArrayObject* py_labels;
+
+    if (! PyArg_ParseTuple( args, "O!O!", &PyArray_Type,&py_inputfeats,&PyArray_Type,&py_labels)) return NULL;
+
+    auto n_samples=py_inputfeats->dimensions[0];
+    auto featdim =py_inputfeats->dimensions[1];
+
+    assert(py_labels->dimensions[0]==py_inputfeats->dimensions[0]);
+
+    const Matrix<BaseFloat> &inputfeats = pyarraytomatrix<double>(py_inputfeats);
+
+    long *labels = pyvector_to_type<long>(py_labels);
+    std::set<long> u_labels;
+    for (auto sample = 0u; sample < n_samples; ++sample) {
+        u_labels.insert(labels[sample]);
+    }
+    auto num_speakers = u_labels.size();
+
+    LDA* lda = LDA::getInstance();
+    //Init the LDA model, with the number of speakers as classes
+    lda->init(num_speakers,inputfeats.NumCols());
+    for (auto samplenum = 0; samplenum < n_samples;samplenum++) {
+        SubVector<BaseFloat> feat(inputfeats,samplenum);
+        //Accumulate the feature and the corresponding label
+        lda->accumulate(feat,labels[samplenum]);
+        PyErr_CheckSignals();
+    }
+
+    return Py_BuildValue("");
 }
 
 static PyObject* py_fitlda(PyObject* self,PyObject* args,PyObject* kwargs){
@@ -375,10 +461,12 @@ static PyObject* py_getclassmean(PyObject* self,PyObject* args){
  *   */
 static PyMethodDef libldaModule_methods[] = {
     {"fitlda",(PyCFunction)py_fitlda,METH_VARARGS|METH_KEYWORDS,"filelist,targetdim,transform are the parameters!"},
+    {"fitldafromdata",py_fitldafromdata,METH_VARARGS},
     {"predictldafromutterance",py_predictldafromutterance,METH_VARARGS},
     {"predictldafromarray",py_predictldafromarray,METH_VARARGS},
     {"getstats",py_getstats,METH_VARARGS},
     {"getclassmeans",py_getclassmean,METH_VARARGS},
+    {"estimate",py_estimate,METH_VARARGS},
     {NULL, NULL,0,NULL}
 };
 
