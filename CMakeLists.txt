@@ -7,7 +7,9 @@ set(PACKAGE_VERSION_MINOR 1)
 set(PACKAGE_VERSION_PATCH 0)
 set(PACKAGE_VERSION ${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}.${PACKAGE_VERSION_PATCH})
 
-set(LDA_STATIC_LIB lda)
+set(LDA_SHARED_LIB lda)
+
+set(LDA_STATIC_LIB static_lda)
 
 set(PYTHONDIR ${CMAKE_SOURCE_DIR}/python)
 
@@ -100,12 +102,17 @@ include_directories(
     ${CHTK_DIR}
     ${PYTHON_INCLUDE_DIRS}
     ${NUMPY_INCLUDE_DIRS}
+    ${SOURCE_DIR}
     )
 
-
-
-set(PYCOVAR_SOURCES 
+set(LDA_MAIN 
     ${SOURCE_DIR}/ldamodule.cpp)
+
+set(LDA_HEADERS 
+    ${SOURCE_DIR}/LDA.hpp)
+
+set(LDA_SOURCES 
+    ${SOURCE_DIR}/LDA.cpp)
 
 set(CHTK_SOURCES
     ${CHTK_DIR}/chtk.cpp)
@@ -113,8 +120,16 @@ set(CHTK_SOURCES
 add_library(chtk SHARED ${CHTK_SOURCES})
 target_link_libraries(chtk z)
 
-add_library(${LDA_STATIC_LIB} SHARED ${PYCOVAR_SOURCES})
+add_library(${LDA_STATIC_LIB} SHARED ${LDA_SOURCES} ${LDA_HEADERS})
+target_link_libraries(${LDA_STATIC_LIB} ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES})
+#Error while linking occurs if we do not include that to the static library compile flags 
+#IF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64"  )
+    #SET_TARGET_PROPERTIES(${LDA_STATIC_LIB} PROPERTIES COMPILE_FLAGS "-fPIC")
+#ENDIF(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64"  )
 
-target_link_libraries(${LDA_STATIC_LIB} dl m pthread chtk ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES} ${PYTHON_LIBRARIES} )
+add_library(${LDA_SHARED_LIB} SHARED ${LDA_MAIN} ${LDA_HEADERS})
+
+#target_link_libraries(${LDA_SHARED_LIB} dl m pthread chtk ${PYTHON_LIBRARIES} ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES})
+target_link_libraries(${LDA_SHARED_LIB} ${LDA_STATIC_LIB} dl m pthread chtk ${PYTHON_LIBRARIES})
 #add_executable(${EXECUTABLE_NAME} ${EXECUTABLE_PATH})
 #target_link_libraries(${EXECUTABLE_NAME} dl m pthread ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES} ${COVAR_STATIC_LIB} ${PYTHON_LIBRARIES})

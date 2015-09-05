@@ -2,11 +2,12 @@
 #include <iostream>
 #include <string>
 #include <vector>
-#include "transform/lda-estimate.h"
 #include "chtk.h"
 //numpy library
 #include "numpy/arrayobject.h"
 #include <cassert>
+//Also imports the KALDI headers
+#include "LDA.hpp"
 
 namespace kaldi{
 
@@ -64,7 +65,7 @@ Matrix<BaseFloat> readFeatureFromPyString(PyObject* pyfeaturefilename){
 
 
 template<typename T>
-void k_matrix_to_array(const Matrix<BaseFloat>& inpmat,T* retarr){
+void k_matrix_to_array(const MatrixBase<T>& inpmat,T* retarr){
     //Copies the vector of inpmat into the array retarr. Please verify that the sizes match!
     for (auto i = 0; i < inpmat.NumRows(); ++i) {
         auto curind = i*inpmat.NumCols();
@@ -73,14 +74,50 @@ void k_matrix_to_array(const Matrix<BaseFloat>& inpmat,T* retarr){
 }
 
 template<typename T>
+void k_matrix_to_array(const PackedMatrix<T>& inpmat,T* retarr){
+    //Copies the vector of inpmat into the array retarr. Please verify that the sizes match!
+    const T* rawdata = inpmat.Data();
+    //THe number of elements in the lower diagonal
+    int32 n_elements = inpmat.NumCols()*(inpmat.NumCols()+1)/2;
+    //ind is the index of the maximum element of the current row
+    auto ind = 0u;
+    //the current row index, counts throught the rows
+    auto rowind = 0u;
+    //the index where the last row did start
+    auto laststartind = 0u;
+    auto colind = 0u;
+    for (auto k = 0; k < n_elements; ++k) {
+        if (k>ind){
+            ind = (2*k)-laststartind;
+            //std::cerr << ind << " " << " " << k << std::endl;
+            laststartind = k;
+            rowind +=1;
+            colind = 0;
+        }
+
+        retarr[rowind*inpmat.NumCols()+colind] = rawdata[k];
+        retarr[colind*inpmat.NumCols()+rowind] = rawdata[k];
+        colind += 1;
+    }
+}
+
+template<typename T>
+void k_vector_to_array(const VectorBase<T>& inputvec,T* retarr){
+    const T* rawdata = inputvec.Data();
+
+    auto n_elements=inputvec.Dim();
+    std::copy(rawdata,rawdata+n_elements,retarr);
+
+
+}
+
+
+template<typename T>
 Matrix<BaseFloat> pyarraytomatrix(PyArrayObject* pytrans){
     auto dim1 = pytrans->dimensions[0];
     auto dim2 = pytrans->dimensions[1];
     Matrix<BaseFloat> trans(dim1,dim2);
     T *arr = pyvector_to_type<T>(pytrans);
-    //for (int i = 0; i < dim1; i++) {
-        //std::cerr << arr[i] << std::endl;
-    //}
     for (auto i = 0; i < dim1; i++) {
         auto beginind = i*dim2;
         auto endind = (i+1)*dim2;
@@ -111,21 +148,33 @@ Matrix<BaseFloat> transform(const Matrix<BaseFloat> &feat,const Matrix<BaseFloat
     return feat_out;
 }
 
-static PyObject* py_fitlda(PyObject* self,PyObject* args){
+static PyObject* py_fitlda(PyObject* self,PyObject* args,PyObject* kwargs){
+    bool estimate_transform;
+
+    char* kwds[] ={
+        "filelist",
+        "targetdim",
+        "transform",
+        NULL
+    };
     PyObject* dict;
     //Target dimension which is passed in the args
     int targetdim;
     /* the O! parses for a Python object (listObj) checked
      *    to be of type PyList_Type */
-    if (! PyArg_ParseTuple( args, "O!i", &PyDict_Type, &dict,&targetdim)) return NULL;
+    if (! PyArg_ParseTupleAndKeywords( args,kwargs, "O!i|i", kwds,&PyDict_Type, &dict,&targetdim,&estimate_transform)) return NULL;
     //Check if the given argument is really a dict
     PyDict_Check(dict);
+
     auto numspeakers = PyDict_Size(dict);
     //equal to dict.items()
     PyObject* items = PyDict_Items(dict);
     //Variable to check if the sizes of the utterance for every key are consistent
     auto check_utts=0;
-    LdaEstimate lda;
+    LDA *lda = LDA::getInstance();
+    //The bins used to estimate the priors
+    //The problem is that we cannot use stack allocated arrays, since they get destoryed after the function returns;
+    std::vector<uint32_t> *bins = new std::vector<uint32_t>;
     for (auto spkid = 0u; spkid < numspeakers; ++spkid) {
         PyObject* item = PyList_GetItem(items,spkid);
         PyObject* spk=PyTuple_GetItem(item,0);
@@ -143,45 +192,59 @@ static PyObject* py_fitlda(PyObject* self,PyObject* args){
             //Feats stores in row major its data. In every row there is one feature vector.
             const Matrix<BaseFloat> &feats = readFeatureFromPyString(utt);
             //init lda at the first iteration
-            if(lda.Dim()==0){
-                lda.Init(numspeakers,feats.NumCols());
+            if(spkid==0){
+                lda->init(numspeakers,feats.NumCols());
             }
             for (auto matind = 0; matind < feats.NumRows(); ++matind) {
                 SubVector<BaseFloat> feat(feats,matind);
-                lda.Accumulate(feat,spkid);
+                //accumulate the LDA statistics for later use
+                lda->accumulate(feat,spkid);
+                //We return for every speakers sample the corresponding bin
+                bins->push_back(spkid);
             }
         }
         //Cancel the operation of keyboardinterrupt is called
         PyErr_CheckSignals();
     }
-    //Accumulation finsihed, now we process the transformation matrix
-    LdaEstimateOptions opts;
-    opts.dim = targetdim;
-    //The problem is that we cannot use stack allocated arrays, since they get destoryed after the function returns;
-    Matrix<BaseFloat> lda_mat;
-    lda.Estimate(opts,&lda_mat);
-    //Transformation is stored in the lda_mat variable. We return a numpy array to the python script
-    npy_intp dimensions[2]={lda_mat.NumRows(),lda_mat.NumCols()};
+
     //The result which we are going to return. Its a numpy array with lda_mat dimensions
-    PyArrayObject* result;
+    PyArrayObject* lda_result_mat;
+    if (estimate_transform ==true){
+        //Accumulation finsihed, now we process the transformation matrix
+        LdaEstimateOptions opts;
+        opts.dim = targetdim;
+        //the lda transformation matrix, it can be used to do dimensionality reduction
+        Matrix<BaseFloat> lda_mat;
+        lda->estimate(opts,&lda_mat);
+        //Transformation is stored in the lda_mat variable. We return a numpy array to the python script
+        npy_intp dimensions[2]={lda_mat.NumRows(),lda_mat.NumCols()};
 
-    auto mat_size = lda_mat.NumRows() * lda_mat.NumCols();
+        auto mat_size = lda_mat.NumRows() * lda_mat.NumCols();
 
-    //This seems to be rather stupid, but the problem is that kaldi stores its arrays, which are in
-    //the ->Data() pointer with an offset for the rows and cols. Therefore we cant directly copy the
-    //content of kaldi, rather than we need to store the result in a new array
-    float *retarr = new float[mat_size];
-    for (auto i = 0; i < lda_mat.NumRows(); ++i) {
-        auto curind = i*lda_mat.NumCols();
-        std::copy(lda_mat.RowData(i),lda_mat.RowData(i)+lda_mat.NumCols(),retarr+curind);
+        //This seems to be rather stupid, but the problem is that kaldi stores its arrays, which are in
+        //the ->Data() pointer with an offset for the rows and cols. Therefore we cant directly copy the
+        //content of kaldi, rather than we need to store the result in a new array
+        float *retarr = new float[mat_size];
+        for (auto i = 0; i < lda_mat.NumRows(); ++i) {
+            auto curind = i*lda_mat.NumCols();
+            std::copy(lda_mat.RowData(i),lda_mat.RowData(i)+lda_mat.NumCols(),retarr+curind);
+        }
+        //Init a new python object with 2 dimensions and the datapointer
+        lda_result_mat = (PyArrayObject* )PyArray_SimpleNewFromData(2,dimensions,NPY_FLOAT,retarr);
+        //Usually python does only store a reference on the given pointer and does not own the data
+        //With this flag, we tell him to own the data and deallocate the data with the PyObject
+        lda_result_mat->flags |= NPY_ARRAY_OWNDATA;
     }
-    //Init a new python object with 2 dimensions and the datapointer
-    result = (PyArrayObject* )PyArray_SimpleNewFromData(2,dimensions,NPY_FLOAT,retarr);
-    //Usually python does only store a reference on the given pointer and does not own the data
-    //With this flag, we tell him to own the data and deallocate the data with the PyObject
-    result->flags |= NPY_ARRAY_OWNDATA;
-    //result = (PyArrayObject *)PyArray_FromDimsAndData(2, dimensions, PyArray_FLOAT,reinterpret_cast<char *> (lda_mat.Data()));
-    return PyArray_Return(result);
+    else{
+//TODO:FIX THAT, currently we just return an empty array when the function finishes
+        npy_intp dims[1]={};
+        lda_result_mat= (PyArrayObject*)PyArray_EMPTY(1,dims,NPY_INT,0);
+    }
+    npy_intp bins_dims[1] = {bins->size()};
+    PyArrayObject* bins_result = (PyArrayObject* )PyArray_SimpleNewFromData(1,bins_dims,NPY_UINT32,bins->data());
+    bins_result->flags |= NPY_ARRAY_OWNDATA;
+
+    return Py_BuildValue("(OO)",lda_result_mat,bins_result);
 }
 
 
@@ -240,16 +303,83 @@ static PyObject* py_predictldafromutterance(PyObject* self, PyObject* args){
 
 }
 
+//Returns a tuple (mean,total_covar,between covar,n_samples) of all the statistics accumulated by fit()
+//The mean represents the class mean
+//total covar represents the covariance matrix within the classes
+//Between covar represents the covariance matrix between the classes
+//n_samples if the amount of samples for all data
+static PyObject* py_getstats(PyObject* self,PyObject* args){
+
+    LDA* lda = LDA::getInstance();
+    double count;
+    SpMatrix<double> total_covar, bc_covar;
+    Vector<double> total_mean;
+    //gets the statistics from the accumulated lda inputs
+    lda->getstats(&total_covar, &bc_covar, &total_mean, &count);
+
+    double *total_covar_ret = new double[total_covar.NumRows()*total_covar.NumCols()];
+    k_matrix_to_array(total_covar,total_covar_ret);
+
+    double *total_mean_ret = new double[total_mean.Dim()];
+    k_vector_to_array(total_mean,total_mean_ret);
+
+    double *bc_ret = new double[bc_covar.NumRows()*bc_covar.NumCols()];
+    k_matrix_to_array(bc_covar,bc_ret);
+
+    npy_intp dimensions_covar[2] = {total_covar.NumRows(),total_covar.NumCols()};
+
+    npy_intp dimensions_bc[2] = {bc_covar.NumRows(),bc_covar.NumCols()};
+
+    npy_intp dimensions_mean[1] = {total_mean.Dim()};
+
+    PyArrayObject* tot_covar = (PyArrayObject* )PyArray_SimpleNewFromData(2,dimensions_covar,NPY_DOUBLE,total_covar_ret);
+    //Usually python does only store a reference on the given pointer and does not own the data
+    //With this flag, we tell him to own the data and deallocate the data with the PyObject
+    tot_covar->flags |= NPY_ARRAY_OWNDATA;
+
+    PyArrayObject* tot_mean = (PyArrayObject*) PyArray_SimpleNewFromData(1,dimensions_mean,NPY_DOUBLE,total_mean_ret);
+
+    tot_mean->flags |= NPY_ARRAY_OWNDATA;
+
+    PyArrayObject* tot_bc = (PyArrayObject* )PyArray_SimpleNewFromData(2,dimensions_bc,NPY_DOUBLE,bc_ret);
+    //Usually python does only store a reference on the given pointer and does not own the data
+    //With this flag, we tell him to own the data and deallocate the data with the PyObject
+    tot_bc->flags |= NPY_ARRAY_OWNDATA;
+
+    return Py_BuildValue("(OOOd)",tot_mean,tot_covar,tot_bc,count);
+}
+
+
+static PyObject* py_getclassmean(PyObject* self,PyObject* args){
+    LDA *lda = LDA::getInstance();
+    Matrix<double> classmeans;
+    lda->getclassmean(&classmeans);
+
+    double *classmeans_ret = new double[classmeans.NumRows()*classmeans.NumCols()];
+
+    k_matrix_to_array(classmeans,classmeans_ret);
+
+    npy_intp dimensions_mean[2] = {classmeans.NumRows(),classmeans.NumCols()};
+
+    PyArrayObject* class_mean = (PyArrayObject*) PyArray_SimpleNewFromData(2,dimensions_mean,NPY_DOUBLE,classmeans_ret);
+
+    class_mean->flags |= NPY_ARRAY_OWNDATA;
+    return  PyArray_Return(class_mean);
+
+}
+
 
 
 /*
  *  * Bind Python function names to our C functions
  *   */
 static PyMethodDef libldaModule_methods[] = {
-    {"fitlda",py_fitlda,METH_VARARGS},
+    {"fitlda",(PyCFunction)py_fitlda,METH_VARARGS|METH_KEYWORDS,"filelist,targetdim,transform are the parameters!"},
     {"predictldafromutterance",py_predictldafromutterance,METH_VARARGS},
     {"predictldafromarray",py_predictldafromarray,METH_VARARGS},
-    {NULL, NULL}
+    {"getstats",py_getstats,METH_VARARGS},
+    {"getclassmeans",py_getclassmean,METH_VARARGS},
+    {NULL, NULL,0,NULL}
 };
 
 /*

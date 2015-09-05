@@ -28,5 +28,5 @@ if(ENABLE_STATIC)
     install(TARGETS "chtk-static" ARCHIVE DESTINATION lib)
 endif(ENABLE_STATIC)
 
-install(FILES "chtk.h" DESTINATION include)
+#install(FILES "chtk.h" DESTINATION include)
 
