@@ -460,6 +460,7 @@ static PyObject* py_getclassmean(PyObject* self,PyObject* args){
  *  * Bind Python function names to our C functions
  *   */
 static PyMethodDef libldaModule_methods[] = {
+    //Depreacated, this function uses the utterances given as string paths
     {"fitlda",(PyCFunction)py_fitlda,METH_VARARGS|METH_KEYWORDS,"filelist,targetdim,transform are the parameters!"},
     {"fitldafromdata",py_fitldafromdata,METH_VARARGS},
     {"predictldafromutterance",py_predictldafromutterance,METH_VARARGS},

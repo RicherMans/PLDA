@@ -4,104 +4,6 @@ from liblda import predictldafromutterance, predictldafromarray, getstats, getcl
 # the LDA class can be used by simply initzialize it and use the fit and
 # predict parameters
 
-
-# def empirical_covariance(X, assume_centered=False):
-#     """Computes the Maximum likelihood covariance estimator
-#     Parameters
-#     ----------
-#     X : ndarray, shape (n_samples, n_features)
-#         Data from which to compute the covariance estimate
-#     assume_centered : Boolean
-#         If True, data are not centered before computation.
-#         Useful when working with data whose mean is almost, but not exactly
-#         zero.
-#         If False, data are centered before computation.
-#     Returns
-#     -------
-#     covariance : 2D ndarray, shape (n_features, n_features)
-#         Empirical covariance (Maximum Likelihood Estimator).
-#     """
-#     X = np.asarray(X)
-#     if X.ndim == 1:
-#         X = np.reshape(X, (1, -1))
-
-#     if assume_centered:
-#         covariance = np.dot(X.T, X) / X.shape[0]
-#     else:
-#         covariance = np.cov(X.T, bias=1)
-
-#     return covariance
-
-
-# def _cov(X, shrinkage=None):
-#     """Estimate covariance matrix (using optional shrinkage).
-#     Parameters
-#     ----------
-#     X : array-like, shape (n_samples, n_features)
-#         Input data.
-#     shrinkage : string or float, optional
-#         Shrinkage parameter, possible values:
-#           - None or 'empirical': no shrinkage (default).
-#           - 'auto': automatic shrinkage using the Ledoit-Wolf lemma.
-#           - float between 0 and 1: fixed shrinkage parameter.
-#     Returns
-#     -------
-#     s : array, shape (n_features, n_features)
-#         Estimated covariance matrix.
-#     """
-#     s = empirical_covariance(X)
-#     return s
-
-
-# def _class_means(X, y):
-#     """Compute class means.
-#     Parameters
-#     ----------
-#     X : array-like, shape (n_samples, n_features)
-#         Input data.
-#     y : array-like, shape (n_samples,) or (n_samples, n_targets)
-#         Target values.
-#     Returns
-#     -------
-#     means : array-like, shape (n_features,)
-#         Class means.
-#     """
-#     means = []
-#     classes = np.unique(y)
-#     for group in classes:
-#         Xg = X[y == group, :]
-#         means.append(Xg.mean(0))
-#     return np.asarray(means)
-
-
-# def _class_cov(X, y, priors=None, shrinkage=None):
-#     """Compute class covariance matrix.
-#     Parameters
-#     ----------
-#     X : array-like, shape (n_samples, n_features)
-#         Input data.
-#     y : array-like, shape (n_samples,) or (n_samples, n_targets)
-#         Target values.
-#     priors : array-like, shape (n_classes,)
-#         Class priors.
-#     shrinkage : string or float, optional
-#         Shrinkage parameter, possible values:
-#           - None: no shrinkage (default).
-#           - 'auto': automatic shrinkage using the Ledoit-Wolf lemma.
-#           - float between 0 and 1: fixed shrinkage parameter.
-#     Returns
-#     -------
-#     cov : array-like, shape (n_features, n_features)
-#         Class covariance matrix.
-#     """
-#     classes = np.unique(y)
-#     covs = []
-#     for group in classes:
-#         Xg = X[y == group, :]
-#         covs.append(np.atleast_2d(_cov(Xg)))
-#     return np.average(covs, axis=0)
-
-
 class LDA():
 
     def __init__(self, priors=None, solver='eigen'):
@@ -137,12 +39,13 @@ class LDA():
         self._means = getclassmeans()
         self._covariance = self._tot_cov - self._bet_cov
         # print self._covariance
-        # print _class_cov(features, labels)
+        # self._covariance = _class_cov(features, labels)
+        n_samples = features.shape[0]
         # print self._covariance
         # print self._means
         if self.priors is None:
             _, self._bins = np.unique(labels, return_inverse=True)
-            self.priors_ = np.bincount(self._bins) / float(self._n_samples)
+            self.priors_ = np.bincount(self._bins) / float(n_samples)
         if self.solver == 'lsqr':
             self._leastsquares()
 
