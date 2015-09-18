@@ -11,6 +11,8 @@ set(LDA_SHARED_LIB lda)
 
 set(LDA_STATIC_LIB static_lda)
 
+set(PLDA_SHARED_LIB plda)
+
 set(PYTHONDIR ${CMAKE_SOURCE_DIR}/python)
 
 set(MODULE_NAME liblda)
@@ -117,6 +119,11 @@ set(LDA_SOURCES
 set(CHTK_SOURCES
     ${CHTK_DIR}/chtk.cpp)
 
+set(PLDA_MAIN
+    ${SOURCE_DIR}/pldamodule.cpp)
+
+
+
 add_library(chtk SHARED ${CHTK_SOURCES})
 target_link_libraries(chtk z)
 
@@ -133,3 +140,6 @@ add_library(${LDA_SHARED_LIB} SHARED ${LDA_MAIN} ${LDA_HEADERS})
 target_link_libraries(${LDA_SHARED_LIB} ${LDA_STATIC_LIB} dl m pthread chtk ${PYTHON_LIBRARIES})
 #add_executable(${EXECUTABLE_NAME} ${EXECUTABLE_PATH})
 #target_link_libraries(${EXECUTABLE_NAME} dl m pthread ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES} ${COVAR_STATIC_LIB} ${PYTHON_LIBRARIES})
+add_library(${PLDA_SHARED_LIB} SHARED ${PLDA_MAIN} ${PLDA_HEADERS})
+
+target_link_libraries(${PLDA_SHARED_LIB} dl m pthread ${PYTHON_LIBRARIES})
