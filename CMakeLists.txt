@@ -15,17 +15,23 @@ set(PLDA_SHARED_LIB plda)
 
 set(PYTHONDIR ${CMAKE_SOURCE_DIR}/python)
 
-set(MODULE_NAME liblda)
+set(LDA_MODULE_NAME liblda)
 
-set(BINARY_DIR ${PYTHONDIR}/${MODULE_NAME}/)
+set(PLDA_MODULE_NAME libplda)
+
+set(LIBLDA_BINARY_DIR ${PYTHONDIR}/${LDA_MODULE_NAME}/)
+
+set(LIBPLDA_BINARY_DIR ${PYTHONDIR}/${PLDA_MODULE_NAME}/)
 
 set(CHTK_DIR ${PROJECT_SOURCE_DIR}/chtk)
 
 set(SOURCE_DIR ${PROJECT_SOURCE_DIR}/src)
 
-set(EXECUTABLE_OUTPUT_PATH ${BINARY_DIR})
+set(BINARY_DIR lib)
 
-set(LIBRARY_OUTPUT_PATH ${BINARY_DIR})
+set(LDA_LIBRARY_OUTPUT_PATH ${LIBLDA_BINARY_DIR})
+
+set(PLDA_LIBRARY_OUTPUT_PATH ${LIBPLDA_BINARY_DIR})
 
 #set(EXECUTABLE_NAME main)
 
@@ -92,8 +98,6 @@ else ()
 endif()
 
 
-set(LIBRARY_OUTPUT_PATH ${BINARY_DIR})
-
 add_subdirectory(python)
 
 include_directories(
@@ -116,18 +120,22 @@ set(LDA_HEADERS
 set(LDA_SOURCES 
     ${SOURCE_DIR}/LDA.cpp)
 
+set(UTILS_SOURCES ${SOURCE_DIR}/kaldi-utils.cpp)
+
+set(UTILS_HEADERS ${SOURCE_DIR}/kaldi-utils.hpp)
+
 set(CHTK_SOURCES
     ${CHTK_DIR}/chtk.cpp)
 
 set(PLDA_MAIN
     ${SOURCE_DIR}/pldamodule.cpp)
 
-
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${BINARY_DIR})
 
 add_library(chtk SHARED ${CHTK_SOURCES})
 target_link_libraries(chtk z)
 
-add_library(${LDA_STATIC_LIB} SHARED ${LDA_SOURCES} ${LDA_HEADERS})
+add_library(${LDA_STATIC_LIB} SHARED ${LDA_SOURCES} ${LDA_HEADERS} ${UTILS_SOURCES})
 target_link_libraries(${LDA_STATIC_LIB} ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES})
 #Error while linking occurs if we do not include that to the static library compile flags 
 #IF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64"  )
@@ -136,10 +144,14 @@ target_link_libraries(${LDA_STATIC_LIB} ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${
 
 add_library(${LDA_SHARED_LIB} SHARED ${LDA_MAIN} ${LDA_HEADERS})
 
+set_target_properties(${LDA_SHARED_LIB} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${LIBLDA_BINARY_DIR})
+
 #target_link_libraries(${LDA_SHARED_LIB} dl m pthread chtk ${PYTHON_LIBRARIES} ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES})
 target_link_libraries(${LDA_SHARED_LIB} ${LDA_STATIC_LIB} dl m pthread chtk ${PYTHON_LIBRARIES})
 #add_executable(${EXECUTABLE_NAME} ${EXECUTABLE_PATH})
 #target_link_libraries(${EXECUTABLE_NAME} dl m pthread ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES} ${COVAR_STATIC_LIB} ${PYTHON_LIBRARIES})
-add_library(${PLDA_SHARED_LIB} SHARED ${PLDA_MAIN} ${PLDA_HEADERS})
+add_library(${PLDA_SHARED_LIB} SHARED ${PLDA_MAIN} ${PLDA_HEADERS} ${UTILS_SOURCES})
+
+set_target_properties(${PLDA_SHARED_LIB} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${LIBPLDA_BINARY_DIR})
 
 target_link_libraries(${PLDA_SHARED_LIB} dl m pthread ${PYTHON_LIBRARIES})
