@@ -55,8 +55,10 @@ else (KALDI_SRC_DIR AND KALDI_TOOLS_DIR AND KALDI_LIBRARIES)
                  PATHS ${KALDI_SRC_DIR} NO_DEFAULT_PATH)
     find_library(KALDI_UTIL_LIBRARY      NAMES util/kaldi-util.a
                  PATHS ${KALDI_SRC_DIR} NO_DEFAULT_PATH)
+    find_library(KALDI_IVECTOR_LIBRARY      NAMES ivector/kaldi-ivector.a
+                PATHS ${KALDI_SRC_DIR} NO_DEFAULT_PATH)
     
-    foreach(LIBNAME KALDI_DECODER_LIBRARY KALDI_FEAT_LIBRARY KALDI_GMM_LIBRARY KALDI_HMM_LIBRARY KALDI_LAT_LIBRARY KALDI_MATRIX_LIBRARY KALDI_TRANSFORM_LIBRARY KALDI_TREE_LIBRARY KALDI_UTIL_LIBRARY KALDI_BASE_LIBRARY)
+    foreach(LIBNAME KALDI_DECODER_LIBRARY KALDI_FEAT_LIBRARY KALDI_GMM_LIBRARY KALDI_HMM_LIBRARY KALDI_LAT_LIBRARY KALDI_MATRIX_LIBRARY KALDI_TRANSFORM_LIBRARY KALDI_TREE_LIBRARY KALDI_UTIL_LIBRARY KALDI_BASE_LIBRARY KALDI_IVECTOR_LIBRARY)
       if(${LIBNAME})
         SET(KALDI_LIBRARIES ${KALDI_LIBRARIES} ${${LIBNAME}} )
       else(${LIBNAME})
@@ -95,38 +97,8 @@ else (KALDI_SRC_DIR AND KALDI_TOOLS_DIR AND KALDI_LIBRARIES)
       message ("Openfst library not found at ${KALDI_TOOLS_DIR}/openfst/lib")
     endif (OPENFST_LIBRARY)
     
-    find_path(PORTAUDIO_INCLUDE_DIR NAMES portaudio.h PATHS
-              ${KALDI_TOOLS_DIR}/portaudio/install/include NO_DEFAULT_PATH)
-    if (PORTAUDIO_INCLUDE_DIR)
-      if (NOT Kaldi_FIND_QUIETLY)
-        message(STATUS "PortAudio include: ${PORTAUDIO_INCLUDE_DIR}")
-      endif (NOT Kaldi_FIND_QUIETLY)
-    else (PORTAUDIO_INCLUDE_DIR)
-      message ("Portaudio header files not found at ${KALDI_TOOLS_DIR}/portaudio/install/include")
-    endif (PORTAUDIO_INCLUDE_DIR)
     
-    find_library(PORTAUDIO_LIBRARY NAMES libportaudio.a PATHS
-                 ${KALDI_TOOLS_DIR}/portaudio/install/lib NO_DEFAULT_PATH)
-    if (PORTAUDIO_LIBRARY)
-      if (NOT Kaldi_FIND_QUIETLY)
-        message(STATUS "PortAudio library: ${PORTAUDIO_LIBRARY}")
-      endif (NOT Kaldi_FIND_QUIETLY)
-    else (PORTAUDIO_LIBRARY)
-      message ("PortAudio library not found at ${KALDI_TOOLS_DIR}/portaudio/install/lib")
-    endif (PORTAUDIO_LIBRARY)
-    
-    find_file(PORTAUDIO_LIBTOOL_FILE NAMES libportaudio.la PATHS 
-              ${KALDI_TOOLS_DIR}/portaudio/install/lib NO_DEFAULT_PATH)
-    if (PORTAUDIO_LIBTOOL_FILE)
-      if (NOT Kaldi_FIND_QUIETLY)
-        message(STATUS "PortAudio libtool file: ${PORTAUDIO_LIBTOOL_FILE}")
-      endif (NOT Kaldi_FIND_QUIETLY)
-    else (PORTAUDIO_LIBTOOL_FILE)
-      message ("PortAudio libtool (.la) file not found at ${KALDI_TOOLS_DIR}/portaudio/install/lib")
-    endif (PORTAUDIO_LIBTOOL_FILE)
-    
-    if (OPENFST_INCLUDE_DIR AND OPENFST_LIBRARY AND 
-        PORTAUDIO_INCLUDE_DIR AND PORTAUDIO_LIBRARY AND PORTAUDIO_LIBTOOL_FILE)
+    if (OPENFST_INCLUDE_DIR AND OPENFST_LIBRARY)
       set(KALDI_DEPENDENCIES_FOUND TRUE)
     endif()
     
