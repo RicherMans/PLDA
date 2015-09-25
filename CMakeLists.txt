@@ -7,11 +7,13 @@ set(PACKAGE_VERSION_MINOR 1)
 set(PACKAGE_VERSION_PATCH 0)
 set(PACKAGE_VERSION ${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}.${PACKAGE_VERSION_PATCH})
 
-set(LDA_SHARED_LIB lda)
+set(LDA_PYTHON_LIB lda)
 
 set(LDA_STATIC_LIB static_lda)
 
 set(PLDA_SHARED_LIB plda)
+
+set(UTILS_SHARED_LIB utils)
 
 set(PYTHONDIR ${CMAKE_SOURCE_DIR}/python)
 
@@ -49,10 +51,14 @@ else(NOT KALDI_ROOT)
     message(FATAL_ERROR "KALDI_ROOT is not specified in the current environment, please run KALDI_ROOT=/YOUPATH/TO/KALDIROOT/")
 endif()
 
+
+find_package(Kaldi REQUIRED)
+find_package(PythonLibs REQUIRED)
+find_package(NumPy REQUIRED)
+
 if (NOT ATLAS_ROOT)
   set(ATLAS_ROOT ${KALDI_TOOLS_DIR}/ATLAS)
 endif()
-
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ENV{ATLAS_DIR} ${ATLAS_ROOT})
   if (VERBOSE)
@@ -63,11 +69,6 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
 else()
   set(ATLAS_INCLUDE_DIR ${ATLAS_ROOT}/include)
 endif()
-
-
-find_package(Kaldi REQUIRED)
-find_package(PythonLibs REQUIRED)
-find_package(NumPy REQUIRED)
 
 add_definitions(-DDEBUG=0)
 add_definitions(-DNO_OUTPUT=0)
@@ -111,16 +112,14 @@ include_directories(
     ${SOURCE_DIR}
     )
 
-set(LDA_MAIN 
+set(LDA_MAIN
     ${SOURCE_DIR}/ldamodule.cpp)
 
-set(LDA_HEADERS 
+set(LDA_HEADERS
     ${SOURCE_DIR}/LDA.hpp)
 
-set(LDA_SOURCES 
+set(LDA_SOURCES
     ${SOURCE_DIR}/LDA.cpp)
-
-set(UTILS_SOURCES ${SOURCE_DIR}/kaldi-utils.cpp)
 
 set(UTILS_HEADERS ${SOURCE_DIR}/kaldi-utils.hpp)
 
@@ -135,23 +134,27 @@ set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${BINARY_DIR})
 add_library(chtk SHARED ${CHTK_SOURCES})
 target_link_libraries(chtk z)
 
-add_library(${LDA_STATIC_LIB} SHARED ${LDA_SOURCES} ${LDA_HEADERS} ${UTILS_SOURCES})
-target_link_libraries(${LDA_STATIC_LIB} ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES})
-#Error while linking occurs if we do not include that to the static library compile flags 
+add_library(${UTILS_SHARED_LIB} SHARED ${UTILS_HEADERS})
+target_link_libraries(${UTILS_SHARED_LIB} pthread chtk dl m ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES} ${PYTHON_LIBRARIES})
+#Header only project needs to specify a langauge otherwise it crashes
+set_target_properties(${UTILS_SHARED_LIB} PROPERTIES LINKER_LANGUAGE CXX)
+
+add_library(${LDA_STATIC_LIB} SHARED ${LDA_SOURCES})
+target_link_libraries(${LDA_STATIC_LIB} chtk ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES} )
+#Error while linking occurs if we do not include that to the static library compile flags
 #IF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64"  )
-    #SET_TARGET_PROPERTIES(${LDA_STATIC_LIB} PROPERTIES COMPILE_FLAGS "-fPIC")
+#SET_TARGET_PROPERTIES(${LDA_STATIC_LIB} PROPERTIES COMPILE_FLAGS "-fPIC")
 #ENDIF(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64"  )
 
-add_library(${LDA_SHARED_LIB} SHARED ${LDA_MAIN} ${LDA_HEADERS})
+add_library(${LDA_PYTHON_LIB} SHARED ${LDA_MAIN})
 
-set_target_properties(${LDA_SHARED_LIB} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${LIBLDA_BINARY_DIR})
+set_target_properties(${LDA_PYTHON_LIB} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${LIBLDA_BINARY_DIR})
 
-#target_link_libraries(${LDA_SHARED_LIB} dl m pthread chtk ${PYTHON_LIBRARIES} ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES})
-target_link_libraries(${LDA_SHARED_LIB} ${LDA_STATIC_LIB} dl m pthread chtk ${PYTHON_LIBRARIES})
-#add_executable(${EXECUTABLE_NAME} ${EXECUTABLE_PATH})
-#target_link_libraries(${EXECUTABLE_NAME} dl m pthread ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES} ${COVAR_STATIC_LIB} ${PYTHON_LIBRARIES})
-add_library(${PLDA_SHARED_LIB} SHARED ${PLDA_MAIN} ${PLDA_HEADERS} ${UTILS_SOURCES})
+target_link_libraries(${LDA_PYTHON_LIB} ${LDA_STATIC_LIB} ${UTILS_SHARED_LIB} dl m pthread chtk ${PYTHON_LIBRARIES})
+
+
+add_library(${PLDA_SHARED_LIB} SHARED ${PLDA_MAIN})
 
 set_target_properties(${PLDA_SHARED_LIB} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${LIBPLDA_BINARY_DIR})
 
-target_link_libraries(${PLDA_SHARED_LIB} dl m pthread ${PYTHON_LIBRARIES})
+target_link_libraries(${PLDA_SHARED_LIB} dl m pthread ${UTILS_SHARED_LIB} ${PYTHON_LIBRARIES})
