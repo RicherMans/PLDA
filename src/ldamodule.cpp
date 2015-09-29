@@ -87,7 +87,7 @@ static PyObject* py_fitldafromdata(PyObject* self,PyObject* args){
 
     assert(py_labels->dimensions[0]==py_inputfeats->dimensions[0]);
 
-    const Matrix<BaseFloat> &inputfeats = pyarraytomatrix<double>(py_inputfeats);
+    const Matrix<BaseFloat> &inputfeats = pyarraytomatrix<BaseFloat>(py_inputfeats);
 
     long *labels = pyvector_to_type<long>(py_labels);
     std::set<long> u_labels;
@@ -216,7 +216,7 @@ static PyObject* py_predictldafromarray(PyObject* self,PyObject* args){
     if (! PyArg_ParseTuple( args, "O!O!", &PyArray_Type,&pyinputfeat,&PyArray_Type,&pytrans)) return NULL;
 
     const Matrix<BaseFloat>& trans = pyarraytomatrix<float>(pytrans);
-    const Matrix<BaseFloat>& feat = pyarraytomatrix<double>(pyinputfeat);
+    const Matrix<BaseFloat>& feat = pyarraytomatrix<float>(pyinputfeat);
 
 
     const Matrix<BaseFloat>& feat_out = transform(feat,trans);

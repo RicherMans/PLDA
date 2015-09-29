@@ -1,2 +1,2 @@
-from plda import PLDA
+from plda import MPlda as PLDA
 __all__ = ['PLDA']

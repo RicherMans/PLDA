@@ -96,10 +96,10 @@ void k_vector_to_array(const VectorBase<T>& inputvec,T* retarr){
     std::copy(rawdata,rawdata+n_elements,retarr);
 }
 template<typename T>
-Matrix<BaseFloat> pyarraytomatrix(PyArrayObject* pytrans){
+Matrix<T> pyarraytomatrix(PyArrayObject* pytrans){
     auto dim1 = pytrans->dimensions[0];
     auto dim2 = pytrans->dimensions[1];
-    Matrix<BaseFloat> trans(dim1,dim2);
+    Matrix<T> trans(dim1,dim2);
     T *arr = pyvector_to_type<T>(pytrans);
     for (auto i = 0; i < dim1; i++) {
         auto beginind = i*dim2;
