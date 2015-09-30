@@ -4,6 +4,7 @@
 #include <iterator>
 #include <vector>
 #include <algorithm>
+#include <unordered_map>
 //numpy library
 #include "numpy/arrayobject.h"
 // T_INT and all other datatypes for the class
@@ -28,6 +29,7 @@ namespace kaldi{
         Plda plda;
         PldaEstimationConfig estconfig;
         PldaConfig config;
+        std::unordered_map<long,double> meanz,stdvz;
     } MPlda;
 
     struct Stats{
@@ -86,11 +88,11 @@ namespace kaldi{
 
     static PyObject* Mplda_transform(MPlda* self,PyObject* args,PyObject* kwads){
 
-        float smoothfactor;
+        float smoothfactor=1.0;
         PyArrayObject* py_inpututts;
         PyArrayObject* py_labels;
         uint32_t targetdim = 0;
-        if (! PyArg_ParseTuple( args, "O!O!|O!O!k", &PyArray_Type,&py_inpututts,&PyArray_Type,&py_labels,&targetdim)) return NULL;
+        if (! PyArg_ParseTuple( args, "O!O!|O!O!(k|f)", &PyArray_Type,&py_inpututts,&PyArray_Type,&py_labels,&targetdim,&smoothfactor)) return NULL;
         std::map<uint32_t,Stats> speakertoutts;
         PyObject *retdict = PyDict_New();
 
@@ -101,8 +103,13 @@ namespace kaldi{
         if (targetdim>0){
             featdim = targetdim;
         }
-
+        // Labels are strings!
+        if (py_labels->descr->kind == 'S'){
+            std::string err("Labels need to be numpy array of ints, not strings!");
+            return PyErr_Format(PyExc_ValueError,err.c_str());
+        }
         assert(py_labels->dimensions[0]==py_inpututts->dimensions[0]);
+
         long *labels = pyvector_to_type<long>(py_labels);
 
         // Get the unique labels in the number of labels, which are the speakers
@@ -114,14 +121,18 @@ namespace kaldi{
         auto num_speakers = u_labels.size();
 
         for(auto spk = 0u; spk < num_speakers;spk++){
-            if(speakertoutts.count(spk)==0){
+            if(speakertoutts.count(labels[spk])==0){
                 Stats stat;
                 stat.size=0;
                 stat.data.Resize(featdim);
-                speakertoutts.insert(std::make_pair(spk,stat));
+                speakertoutts.insert(std::make_pair(labels[spk],stat));
             }
             speakertoutts[labels[spk]].size += 1;
             speakertoutts[labels[spk]].data.AddVec(1.0,inputfeats.Row(spk));
+        }
+        // Smooth within class covariance if smooth factor is given
+        if (smoothfactor != 1.0){
+            self->plda.SmoothWithinClassCovariance(smoothfactor);
         }
 
         for(std::map<uint32_t,Stats>::iterator it=speakertoutts.begin();it!=speakertoutts.end();it++){
@@ -129,20 +140,103 @@ namespace kaldi{
             assert(samplesize>0);
             // Scale the vector by its samplesize to normalize it
             it->second.data.Scale(1.0/samplesize);
-            Vector<double> transformed(featdim);
-            self->plda.TransformIvector(self->config,it->second.data,&transformed);
-
+            // Need to allocate on heap otherwise we can't return it to python ( will be deleted after this function ends)
+            Vector<double> *transformed=new Vector<double>(featdim);
+            self->plda.TransformIvector(self->config,it->second.data,transformed);
+            // We use the labels given in the labels array
             PyObject* spkid = PyInt_FromSize_t(it->first);
-            npy_intp dimensions[1]  = {transformed.Dim()};
-            std::cerr << transformed <<std::endl;
-            PyArrayObject* py_transformed = (PyArrayObject* )PyArray_SimpleNewFromData(2,dimensions,NPY_DOUBLE,transformed.Data());
+            npy_intp dimensions[1]  = {transformed->Dim()};
+            PyArrayObject* py_transformed = (PyArrayObject* )PyArray_SimpleNewFromData(1,dimensions,NPY_DOUBLE,transformed->Data());
+            // Let python free the memory of this Vector if necessary
             py_transformed->flags |= NPY_ARRAY_OWNDATA;
+            PyObject* tup = PyTuple_New(2);
+            PyObject* py_samplesize = PyInt_FromSize_t(samplesize);
+            Py_INCREF(py_samplesize);
+            Py_INCREF(spkid);
+            PyTuple_SetItem(tup,0,py_samplesize);
+            PyTuple_SetItem(tup,1,(PyObject*) py_transformed);
             // Set the value in the map as the transformed value
-            PyDict_SetItem(retdict,spkid,(PyObject*) py_transformed);
+            PyDict_SetItem(retdict,spkid,tup);
         }
         return Py_BuildValue("O",retdict);
 
 
+    }
+
+    static PyObject* MPlda_norm(MPlda* self,PyObject* args,PyObject *kwargs){
+        PyArrayObject* py_bkgdata;
+        PyObject* py_spktoutt;
+        uint32_t numutts=0;
+        if(!PyArg_ParseTuple(args,"O!O!|O!O!k",&PyArray_Type,&py_bkgdata,&PyDict_Type,&py_spktoutt,&numutts)) return NULL;
+
+        const Matrix<double> &bkgdata = pyarraytomatrix<double>(py_bkgdata);
+        // matrows represent every row in the matrix bkgdata
+        std::vector<uint32_t> matrows(bkgdata.NumRows());
+
+        //We want to shuffle the indices of the matrix
+        std::iota(matrows.begin(),matrows.end(),0);
+
+        std::random_shuffle(matrows.begin(),matrows.end());
+
+        if (numutts==0){
+            numutts = bkgdata.NumRows();
+        }
+        // Accumulated scores for every given speakermodel
+        std::unordered_map<long,std::vector<double>> scores;
+
+        // Workaround, somehow there is a bug when inserting the first item in the global variable, no clue why
+        self->meanz.reserve(numutts);
+        self->stdvz.reserve(numutts);
+        for (auto i=0u; i < numutts; ++i) {
+            auto rowindex = matrows[i];
+            Vector<double> transformed(self->plda.Dim());
+            self->plda.TransformIvector(self->config,bkgdata.Row(rowindex),&transformed);
+
+            PyObject *key, *value;
+            Py_ssize_t pos = 0;
+            while(PyDict_Next(py_spktoutt, &pos, &key, &value)){
+                if(! PyInt_Check(key)) return NULL;
+                if(! PyTuple_Check(value)) return NULL;
+
+                long k = PyInt_AsLong(key);
+                // The values are a tuple of (samplesize,DATA), here we dont need the samplesize
+                const Vector<double> &repr = pyarraytovector<double>((PyArrayObject* )PyTuple_GetItem(value,1));
+                double score = self->plda.LogLikelihoodRatio(transformed,1,repr);
+                scores[k].push_back(score);
+            }
+        }
+        for(std::unordered_map<long,std::vector<double> >::const_iterator it=scores.begin();it!=scores.end();it++){
+            double sum = std::accumulate( it->second.begin(), it->second.end(), 0.0);
+            assert(it->second.size()>0);
+            double mean = sum/it->second.size();
+            self->meanz[it->first] = std::move(mean);
+            // self->meanz.insert(std::make_pair(it->first,mean));
+            double sqsum = std::accumulate(it->second.begin(),it->second.end(),0.0,[&](const double &a,const double &b){
+                    return a+((b-mean) * (b-mean));
+                    });
+            sqsum /= it->second.size();
+            self->stdvz.insert(std::make_pair(it->first,sqrt(sqsum)));
+        }
+
+    }
+
+    static PyObject* MPlda_score(MPlda * self, PyObject* args, PyObject* kwds){
+        PyObject* py_enrolemodel;
+        PyObject* py_testutt;
+        uint32_t enrolemodelid=-1;
+        if(!PyArg_ParseTuple(args,"kO!O!",&enrolemodelid,&PyTuple_Type,&py_enrolemodel,&PyTuple_Type,&py_testutt)) return NULL;
+
+        long samplesize = PyInt_AsLong(PyTuple_GetItem(py_enrolemodel,0));
+        const Vector<double> &enrolemodel = pyarraytovector<double>((PyArrayObject *)PyTuple_GetItem(py_enrolemodel,1));
+        const Vector<double> &testutt = pyarraytovector<double>((PyArrayObject *)PyTuple_GetItem(py_testutt,1));
+        double score = self->plda.LogLikelihoodRatio(enrolemodel,samplesize,testutt);
+        // Cant normalize if we have not seen this enrolemodel
+        if (self->meanz.count(enrolemodelid)==0){
+            return Py_BuildValue("f",score);
+        }
+        // Do t-z norm
+        score = (score - (self->meanz[enrolemodelid]))/self->stdvz[enrolemodelid];
+        return Py_BuildValue("f",score);
     }
 
 
@@ -153,6 +247,12 @@ namespace kaldi{
         },
         {"transform",(PyCFunction)Mplda_transform,METH_VARARGS,
         "Transforms the given parameters X into the PLDA subspace. "
+        },
+        {"norm",(PyCFunction)MPlda_norm,METH_VARARGS,
+        "Does Normalization on the scores, using Z norm currently"
+        },
+        {"score",(PyCFunction)MPlda_score,METH_VARARGS,
+        "Scores a given enrolement model, which was adapted using transform against an test utterance. Both enrolment and test utterance need to be adapted first"
         },
         {NULL}  /* Sentinel */
     };

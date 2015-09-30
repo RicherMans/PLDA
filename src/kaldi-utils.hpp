@@ -15,6 +15,7 @@ T* pyvector_to_type(PyArrayObject* arrayin){
     return (T*) arrayin->data;
 }
 
+
 Matrix<BaseFloat> readFeatureFromChar(const char* featurefilename){
      try{
         //Reads in the feature from the given file. We do not extend the feature ( hence the paremter 0 )
