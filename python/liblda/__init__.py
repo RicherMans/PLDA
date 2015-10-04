@@ -1,2 +1,3 @@
 from lda import LDA
-__all__ = ['LDA']
+from plda import MPlda as PLDA
+__all__ = ['PLDA','LDA']

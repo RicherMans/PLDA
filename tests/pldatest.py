@@ -1,6 +1,6 @@
 import unittest
 import numpy as np
-from libplda import PLDA
+from liblda import PLDA
 
 class PLDATest(unittest.TestCase):
     def setUp(self):

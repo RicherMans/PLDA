@@ -1,12 +1,12 @@
 import numpy as np
 from scipy.misc import logsumexp
-from liblda import predictldafromutterance, predictldafromarray, getstats, getclassmeans, fitldafromdata, estimate
+from liblda import MLDA
 # the LDA class can be used by simply initzialize it and use the fit and
 # predict parameters
 
-class LDA():
+class LDA(MLDA):
 
-    def __init__(self, priors=None, solver='eigen'):
+    def __init__(self, solver='lsqr',priors=None):
         '''
         Function: __init__
         Summary: Inits an LDA object
@@ -17,6 +17,7 @@ class LDA():
             @param (solver) default='eigen': If solver is eigen, KALDI lda estimator is used ( the default one ), if solver is 'lsqr'
             we do the least squares estimation and cannot transform the given features!
         '''
+        MLDA.__init__(self)
         self.priors = priors
         self.solver = solver
 
@@ -33,24 +34,17 @@ class LDA():
         Returns: None
         '''
         # Accumulate the statistics
-        fitldafromdata(features, labels)
+        super(LDA,self).fit(features,labels)
         # Get the statistics from the fitted model
-        _, self._tot_cov, self._bet_cov, self._n_samples = getstats()
-        self._means = getclassmeans()
+        _, self._tot_cov, self._bet_cov, self._n_samples = super(LDA,self)._getstats()
+        self._means = super(LDA,self)._getclassmeans()
         self._covariance = self._tot_cov - self._bet_cov
-        # print self._covariance
-        # self._covariance = _class_cov(features, labels)
         n_samples = features.shape[0]
-        # print self._covariance
-        # print self._means
         if self.priors is None:
             _, self._bins = np.unique(labels, return_inverse=True)
             self.priors_ = np.bincount(self._bins) / float(n_samples)
         if self.solver == 'lsqr':
             self._leastsquares()
-
-    def _getstats(self):
-        return getstats()
 
     def _leastsquares(self):
         self._coef = np.linalg.lstsq(self._covariance, self._means.T)[0].T
@@ -73,8 +67,8 @@ class LDA():
             class would be predicted.
         """
         if not hasattr(self, '_coef') or self._coef is None:
-            raise ValueError("This %(name)s instance is not fitted"
-                             "yet" % {'name': type(self).__name__})
+            raise ValueError("This %(name)s instance is not fitted or in eigen mode ( Please use lsqr solver )"
+                             "" % {'name': type(self).__name__})
 
         # X = check_array(X, accept_sparse='csr')
 
@@ -125,13 +119,13 @@ class LDA():
         normalizationconstant = logsumexp(llk, axis=1)
         return llk - normalizationconstant[:, np.newaxis]
 
-    def transform(self, featurefile, targetdim):
-        '''
-        Predicts for the given file given as f
-        '''
-        ldamat = estimate(targetdim)
-        return predictldafromutterance(featurefile, ldamat)
+    # def transform(self, featurefile, targetdim):
+        # '''
+        # Predicts for the given file given as f
+        # '''
+        # ldamat = super(LDA,self).estimate(targetdim)
+        # return predictldafromutterance(featurefile, ldamat)
 
-    def transformmat(self, featuremat, targetdim):
-        ldamat = estimate(targetdim)
-        return predictldafromarray(featuremat, ldamat)
+    def transform(self, featuremat, targetdim):
+        ldamat = super(LDA,self).estimate(targetdim)
+        return super(LDA,self).predictldafromarray(featuremat, ldamat)

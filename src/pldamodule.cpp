@@ -267,15 +267,19 @@ namespace kaldi{
         return (PyObject *)self;
     }
 
+    static void MPLDA_dealloc(MPlda* self)
+    {
+        self->ob_type->tp_free((PyObject*)self);
+    }
 
 
     static PyTypeObject MPlda_Type = {
         PyObject_HEAD_INIT(NULL)
         0,                         /*ob_size*/
-        "libplda.Mplda",             /*tp_name*/
+        "liblda.Plda",             /*tp_name*/
         sizeof(MPlda),             /*tp_basicsize*/
         0,                         /*tp_itemsize*/
-        0, /*tp_dealloc*/
+        (destructor)MPLDA_dealloc,                         /*tp_dealloc*/
         0,                         /*tp_print*/
         0,                         /*tp_getattr*/
         0,                         /*tp_setattr*/
@@ -308,7 +312,7 @@ namespace kaldi{
         0,                         /* tp_dictoffset */
         0,      /* tp_init */
         0,                         /* tp_alloc */
-        0,                 /* tp_new */
+        Plda_new,                 /* tp_new */
     };
 
 
