@@ -8,7 +8,7 @@ Then just run:
 ```bash
 git clone https://github.com/RicherMans/PLDA
 cd PLDA
-mkdir build && cd build **&& cmake ../ && make
+mkdir build && cd build && cmake ../ && make
 ```
 
 Voila, the python library is copied to your local users installation path.
@@ -25,7 +25,6 @@ X=np.random.rand(n_samples,featdim)
 Y=np.array(n_samples)
 
 lda.fit(X,Y)
-
 ```
 
 For PLDA:
@@ -52,7 +51,11 @@ For PLDA one can also do standard normalization methods such as z-norm
 ```bash
 X_znorm=np.random.rand(n_samples,featdim)
 Y_znorm=np.array(n_samples)
-plda.norm(X_znorm,Y_znorm)
+transformed_vectors = plda.transform(X_znorm,Y_znorm)
+
+
+Otherdata = np.random.rand(m_samples,featdim)
+plda.norm(Otherdata,transformed_vectors)
 ```
 
 And finally one can score any model against a utterance by:
