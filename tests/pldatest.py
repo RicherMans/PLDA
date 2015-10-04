@@ -16,6 +16,7 @@ class PLDATest(unittest.TestCase):
 
         bkgdata = np.random.rand(5,10)
         self.pldamodule.norm(bkgdata,transformed)
+        # random input
         score = self.pldamodule.score(transformed.keys()[0],transformed.values()[0],transformed.values()[2])
         # Should be around this range
         self.assertTrue( -100 <= score <= 100)
