@@ -37,7 +37,7 @@ Y=np.array(n_samples)
 
 plda.fit(X,Y)
 ```
-
+Note that fitting the model in the LDA case is done using enrolment data, while for PLDA we use background data ( any data).
 LDA can then after fitting be used to directly score any incoming utterance using predict_log_prob(SAMPLE)
 
 ```bash
@@ -46,13 +46,12 @@ scores = lda.predict_log_prob(pred)
 ```
 the predict_log_prob method returns a list where each element in the last represents the likelihood for the indexced class.
 
-For PLDA one can also do standard normalization methods such as z-norm
+For PLDA one can also do standard normalization methods such as z-norm (other norms are not implemented yet)
 
 ```bash
-X_znorm=np.random.rand(n_samples,featdim)
-Y_znorm=np.array(n_samples)
-transformed_vectors = plda.transform(X_znorm,Y_znorm)
-
+Models_X=np.random.rand(n_samples,featdim)
+Models_Y=np.array(n_samples)
+transformed_vectors = plda.transform(Models_X,Models_Y)
 
 Otherdata = np.random.rand(m_samples,featdim)
 plda.norm(Otherdata,transformed_vectors)
@@ -66,3 +65,4 @@ modelid = 1
 testval = np.random.rand(featdim)
 plda.score(model,modelid,testval)
 ```
+Note that the modelid is necessary only if one wants to normalize using z-norm.
