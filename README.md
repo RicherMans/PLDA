@@ -69,9 +69,9 @@ testutt_y=np.arange(n_samples)
 
 transformedtest_vectors=plda.transform(testutt_x,testutt_y)
 
-model = transformed_vectors
-modelid = 1
-testval = transformedtest_vectors
-plda.score(model,modelid,testval)
+for model,modelvec in transformed_vectors.iteritems():
+  for testutt,testvec in transformedtest_vectors.iteritems():
+    score=plda.score(model,modelvec,testvec)
+
 ```
 Note that the modelid is necessary only if one wants to normalize using z-norm.
