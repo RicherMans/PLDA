@@ -225,13 +225,13 @@ namespace kaldi{
         PyObject* py_testutt;
         uint32_t enrolemodelid=-1;
         if(!PyArg_ParseTuple(args,"kO!O!",&enrolemodelid,&PyTuple_Type,&py_enrolemodel,&PyTuple_Type,&py_testutt)) return NULL;
-
         long samplesize = PyInt_AsLong(PyTuple_GetItem(py_enrolemodel,0));
         const Vector<double> &enrolemodel = pyarraytovector<double>((PyArrayObject *)PyTuple_GetItem(py_enrolemodel,1));
         const Vector<double> &testutt = pyarraytovector<double>((PyArrayObject *)PyTuple_GetItem(py_testutt,1));
         double score = self->plda.LogLikelihoodRatio(enrolemodel,samplesize,testutt);
+
         // Cant normalize if we have not seen this enrolemodel
-        if (self->meanz.count(enrolemodelid)==0){
+        if (self->meanz.size()==0 || self->meanz.count(enrolemodelid)==0){
             return Py_BuildValue("f",score);
         }
         // Do t-z norm
