@@ -157,6 +157,10 @@ namespace kaldi{
             PyTuple_SetItem(tup,1,(PyObject*) py_transformed);
             // Set the value in the map as the transformed value
             PyDict_SetItem(retdict,spkid,tup);
+            //Decrement all non returned variables
+            Py_DECREF(py_samplesize);
+            Py_DECREF(spkid);
+            Py_DECREF(tup);
         }
         return Py_BuildValue("O",retdict);
 
