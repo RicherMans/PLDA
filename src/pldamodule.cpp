@@ -118,9 +118,7 @@ namespace kaldi{
             u_labels.insert(labels[sample]);
         }
 
-        auto num_speakers = u_labels.size();
-
-        for(auto spk = 0u; spk < num_speakers;spk++){
+        for(auto spk = 0u; spk < n_samples;spk++){
             if(speakertoutts.count(labels[spk])==0){
                 Stats stat;
                 stat.size=0;
