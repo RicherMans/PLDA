@@ -162,114 +162,14 @@ static PyObject* py_fitldafromdata(MLDA *self, PyObject* args,PyObject* kwds){
 
     //Init the LDA model, with the number of speakers as classes
     self->init(num_speakers,inputfeats.NumCols());
-    for (auto samplenum = 0; samplenum < n_samples;samplenum++) {
+    for (auto samplenum = 0u; samplenum < n_samples;samplenum++) {
         SubVector<BaseFloat> feat(inputfeats,samplenum);
         //Accumulate the feature and the corresponding label
-        self->accumulate(feat,labels[samplenum],1.0);
+        self->accumulate(feat,labels[samplenum]);
         PyErr_CheckSignals();
     }
     return Py_BuildValue("");
 }
-
-// static PyObject* py_fitlda(MLDA* self,PyObject* args,PyObject* kwargs){
-//     bool estimate_transform;
-
-//     char* kwds[] ={
-//         "filelist",
-//         "targetdim",
-//         "transform",
-//         NULL
-//     };
-//     PyObject* dict;
-//     //Target dimension which is passed in the args
-//     int targetdim;
-//     /* the O! parses for a Python object (listObj) checked
-//      *    to be of type PyList_Type */
-//     if (! PyArg_ParseTupleAndKeywords( args,kwargs, "O!i|i", kwds,&PyDict_Type, &dict,&targetdim,&estimate_transform)) return NULL;
-//     //Check if the given argument is really a dict
-//     PyDict_Check(dict);
-
-//     auto numspeakers = PyDict_Size(dict);
-//     //equal to dict.items()
-//     PyObject* items = PyDict_Items(dict);
-//     //Variable to check if the sizes of the utterance for every key are consistent
-//     auto check_utts=0;
-//     LDA *lda = LDA::getInstance();
-//     //The bins used to estimate the priors
-//     //The problem is that we cannot use stack allocated arrays, since they get destoryed after the function returns;
-//     std::vector<uint32_t> *bins = new std::vector<uint32_t>;
-//     for (auto spkid = 0u; spkid < numspeakers; ++spkid) {
-//         PyObject* item = PyList_GetItem(items,spkid);
-//         PyObject* spk=PyTuple_GetItem(item,0);
-//         PyObject* values=PyTuple_GetItem(item,1);
-//         PyList_Check(values);
-//         auto num_utts=PyList_Size(values);
-//         if (num_utts < 0){
-//             std::string err("Values need to be a list of features(string)!");
-//             return PyErr_Format(PyExc_ValueError,err.c_str());
-//         }
-//         //We assume that we have key value pairs, where the values are a list of strings representing
-//         //The utterances for the speaker
-//         for (auto j = 0; j < num_utts; ++j) {
-//             PyObject *utt = PyList_GetItem(values,j);
-//             //Feats stores in row major its data. In every row there is one feature vector.
-//             const Matrix<BaseFloat> &feats = readFeatureFromPyString(utt);
-//             //init lda at the first iteration
-//             if(spkid==0){
-//                 lda->init(numspeakers,feats.NumCols());
-//             }
-//             for (auto matind = 0; matind < feats.NumRows(); ++matind) {
-//                 SubVector<BaseFloat> feat(feats,matind);
-//                 //accumulate the LDA statistics for later use
-//                 lda->accumulate(feat,spkid);
-//                 //We return for every speakers sample the corresponding bin
-//                 bins->push_back(spkid);
-//             }
-//         }
-//         //Cancel the operation of keyboardinterrupt is called
-//         PyErr_CheckSignals();
-//     }
-
-//     //The result which we are going to return. Its a numpy array with lda_mat dimensions
-//     PyArrayObject* lda_result_mat;
-//     if (estimate_transform ==true){
-//         //Accumulation finsihed, now we process the transformation matrix
-//         LdaEstimateOptions opts;
-//         opts.dim = targetdim;
-//         //the lda transformation matrix, it can be used to do dimensionality reduction
-//         Matrix<BaseFloat> lda_mat;
-//         lda->estimate(opts,&lda_mat);
-//         //Transformation is stored in the lda_mat variable. We return a numpy array to the python script
-//         npy_intp dimensions[2]={lda_mat.NumRows(),lda_mat.NumCols()};
-
-//         auto mat_size = lda_mat.NumRows() * lda_mat.NumCols();
-
-//         //This seems to be rather stupid, but the problem is that kaldi stores its arrays, which are in
-//         //the ->Data() pointer with an offset for the rows and cols. Therefore we cant directly copy the
-//         //content of kaldi, rather than we need to store the result in a new array
-//         float *retarr = new float[mat_size];
-//         for (auto i = 0; i < lda_mat.NumRows(); ++i) {
-//             auto curind = i*lda_mat.NumCols();
-//             std::copy(lda_mat.RowData(i),lda_mat.RowData(i)+lda_mat.NumCols(),retarr+curind);
-//         }
-//         //Init a new python object with 2 dimensions and the datapointer
-//         lda_result_mat = (PyArrayObject* )PyArray_SimpleNewFromData(2,dimensions,NPY_FLOAT,retarr);
-//         //Usually python does only store a reference on the given pointer and does not own the data
-//         //With this flag, we tell him to own the data and deallocate the data with the PyObject
-//         lda_result_mat->flags |= NPY_ARRAY_OWNDATA;
-//     }
-//     else{
-// //TODO:FIX THAT, currently we just return an empty array when the function finishes
-//         npy_intp dims[1]={};
-//         lda_result_mat= (PyArrayObject*)PyArray_EMPTY(1,dims,NPY_INT,0);
-//     }
-//     npy_intp bins_dims[1] = {bins->size()};
-//     PyArrayObject* bins_result = (PyArrayObject* )PyArray_SimpleNewFromData(1,bins_dims,NPY_UINT32,bins->data());
-//     bins_result->flags |= NPY_ARRAY_OWNDATA;
-
-//     return Py_BuildValue("(OO)",lda_result_mat,bins_result);
-// }
-
 
 static PyObject* py_predictldafromarray(MLDA *self, PyObject* args,PyObject* kwds){
     PyArrayObject *pytrans;
@@ -282,13 +182,13 @@ static PyObject* py_predictldafromarray(MLDA *self, PyObject* args,PyObject* kwd
 
     const Matrix<BaseFloat>& feat_out = transform(feat,trans);
 
-    float *retarr = new float[feat_out.NumRows()*feat_out.NumCols()];
-    k_matrix_to_array(feat_out,retarr);
+    float *transformedarr = new float[feat_out.NumRows()*feat_out.NumCols()];
+    k_matrix_to_array(feat_out,transformedarr);
 
     //Transformation is stored in the lda_mat variable. We return a numpy array to the python script
     npy_intp dimensions[2]={feat_out.NumRows(),feat_out.NumCols()};
 
-    PyArrayObject* result = (PyArrayObject* )PyArray_SimpleNewFromData(2,dimensions,NPY_FLOAT,retarr);
+    PyArrayObject* result = (PyArrayObject* )PyArray_SimpleNewFromData(2,dimensions,NPY_FLOAT,transformedarr);
     //Usually python does only store a reference on the given pointer and does not own the data
     //With this flag, we tell him to own the data and deallocate the data with the PyObject
     result->flags |= NPY_ARRAY_OWNDATA;
