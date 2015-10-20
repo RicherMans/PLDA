@@ -47,7 +47,7 @@ namespace kaldi{
         PyArrayObject* py_labels;
         // Default number of iterations is 10
         uint32_t iters=10;
-        if (! PyArg_ParseTuple( args, "O!O!|O!O!k", &PyArray_Type,&py_inputfeats,&PyArray_Type,&py_labels,&iters)) return NULL;
+        if (! PyArg_ParseTuple( args, "O!O!|k", &PyArray_Type,&py_inputfeats,&PyArray_Type,&py_labels,&iters)) return NULL;
 
         auto n_samples=py_inputfeats->dimensions[0];
         auto featdim =py_inputfeats->dimensions[1];
@@ -92,7 +92,7 @@ namespace kaldi{
         PyArrayObject* py_inpututts;
         PyArrayObject* py_labels;
         uint32_t targetdim = 0;
-        if (! PyArg_ParseTuple( args, "O!O!|O!O!(k|f)", &PyArray_Type,&py_inpututts,&PyArray_Type,&py_labels,&targetdim,&smoothfactor)) return NULL;
+        if (! PyArg_ParseTuple( args, "O!O!|kf", &PyArray_Type,&py_inpututts,&PyArray_Type,&py_labels,&targetdim,&smoothfactor)) return NULL;
         std::map<uint32_t,Stats> speakertoutts;
         PyObject *retdict = PyDict_New();
 
@@ -169,7 +169,7 @@ namespace kaldi{
         PyArrayObject* py_bkgdata;
         PyObject* py_spktoutt;
         uint32_t numutts=0;
-        if(!PyArg_ParseTuple(args,"O!O!|O!O!k",&PyArray_Type,&py_bkgdata,&PyDict_Type,&py_spktoutt,&numutts)) return NULL;
+        if(!PyArg_ParseTuple(args,"O!O!|i",&PyArray_Type,&py_bkgdata,&PyDict_Type,&py_spktoutt,&numutts)) return NULL;
 
         const Matrix<double> &bkgdata = pyarraytomatrix<double>(py_bkgdata);
         // matrows represent every row in the matrix bkgdata
@@ -187,6 +187,7 @@ namespace kaldi{
         std::unordered_map<long,std::vector<double>> scores;
 
         // Workaround, somehow there is a bug when inserting the first item in the global variable, no clue why
+        // std::cerr << "ERROR " <<std::endl;
         self->meanz.reserve(numutts);
         self->stdvz.reserve(numutts);
         for (auto i=0u; i < numutts; ++i) {
@@ -205,6 +206,7 @@ namespace kaldi{
                 const Vector<double> &repr = pyarraytovector<double>((PyArrayObject* )PyTuple_GetItem(value,1));
                 double score = self->plda.LogLikelihoodRatio(transformed,1,repr);
                 scores[k].push_back(score);
+                PyErr_CheckSignals();
             }
         }
         for(std::unordered_map<long,std::vector<double> >::const_iterator it=scores.begin();it!=scores.end();it++){
@@ -217,7 +219,9 @@ namespace kaldi{
                     return a+((b-mean) * (b-mean));
                     });
             sqsum /= it->second.size();
-            self->stdvz.insert(std::make_pair(it->first,sqrt(sqsum)));
+            self->stdvz[it->first] = std::move(sqrt(sqsum));
+            // self->stdvz.insert(std::make_pair(it->first,sqrt(sqsum)));
+            PyErr_CheckSignals();
         }
 
     }
@@ -237,7 +241,7 @@ namespace kaldi{
             return Py_BuildValue("f",score);
         }
         // Do t-z norm
-        score = (score - (self->meanz[enrolemodelid]))/self->stdvz[enrolemodelid];
+        score = (score - self->meanz.at(enrolemodelid))/(self->stdvz.at(enrolemodelid));
         return Py_BuildValue("f",score);
     }
 
@@ -265,6 +269,9 @@ namespace kaldi{
         MPlda *self;
 
         self = (MPlda *)type->tp_alloc(type, 0);
+
+        // self->meanz = new std::unordered_map<long,double>();
+        // self->stdvz = new std::unordered_map<long,double>();
 
         return (PyObject *)self;
     }
@@ -331,7 +338,6 @@ namespace kaldi{
         // (void) Py_InitModule("libplda",libpldaModule_methods);
         if (PyType_Ready(&MPlda_Type) < 0)
             return;
-        MPlda_Type.tp_new = PyType_GenericNew;
         PyObject *m = Py_InitModule3("libplda", libpldaModule_methods1,
                        "Example module that creates an extension type.");
         if (m == NULL)
