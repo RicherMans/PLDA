@@ -34,8 +34,8 @@ class PLDATest(unittest.TestCase):
 
     def test_fittransformlarge(self):
         largedata = np.random.rand(10000, 1024)
-        self.labels = np.array([i % 10 for i in range(largedata.shape[0])])
-        self.assertIsNone(self.pldamodule.fit(largedata, self.labels))
+        labels = np.array([i / 10 for i in range(largedata.shape[0])])
+        self.assertIsNone(self.pldamodule.fit(largedata, labels))
         enroledata = np.random.rand(100, 1024)
         enrolelabels = np.array([i % 10 for i in range(enroledata.shape[0])])
         transformed = self.pldamodule.transform(enroledata, enrolelabels)
@@ -43,7 +43,7 @@ class PLDATest(unittest.TestCase):
         testlabels = np.arange(100)
 
         transformedtest = self.pldamodule.transform(testdata, testlabels)
-        bkgdata = np.random.rand(100000, 1024)
+        bkgdata = np.random.rand(100, 1024)
 
         self.pldamodule.norm(bkgdata, transformed)
         for model, modelvec in transformed.iteritems():
@@ -52,5 +52,37 @@ class PLDATest(unittest.TestCase):
                 # Should be around this range
                 self.assertTrue(-100 <= score <= 100)
 
+    def test_randomtransform(self):
+        n_samples = 1938
+        m_samples = 969
+        enroll_samples = 556
+        test_samples = 500
+        featdim = 1024
+        X = np.random.rand(n_samples, featdim)
+        Y = np.array([i / 5 for i in range(n_samples)])
+        self.pldamodule.fit(X, Y,2)
+
+        Models_X = np.random.rand(enroll_samples, featdim)
+        Models_Y = np.array([i / 4 for i in xrange(enroll_samples)])
+        # Starting transformations
+        transformed_vectors = self.pldamodule.transform(Models_X, Models_Y)
+        # Generate some random background data
+        Otherdata = np.random.rand(m_samples, featdim)
+        self.pldamodule.norm(Otherdata, transformed_vectors)
+
+        testutt_x = np.random.rand(test_samples, featdim)
+        testutt_y = np.arange(test_samples)
+
+        transformedtest_vectors = self.pldamodule.transform(
+            testutt_x, testutt_y)
+
+        for model, modelvec in transformed_vectors.iteritems():
+            for testutt, testvec in transformedtest_vectors.iteritems():
+                score = self.pldamodule.score(model, modelvec, testvec)
+                self.assertTrue(-100 <= score <= 100)
+
+
 if __name__ == '__main__':
     unittest.main()
+    # suite = unittest.TestLoader().loadTestsFromTestCase(PLDATest)
+    # testResult = unittest.TextTestRunner(verbosity=2).run(suite)
