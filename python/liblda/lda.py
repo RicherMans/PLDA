@@ -86,7 +86,7 @@ def safe_sparse_dot(a, b, dense_output=False):
 
 class LDA(MLDA):
 
-    def __init__(self, solver='lsqr', priors=None):
+    def __init__(self, solver='svd', priors=None):
         '''
         Function: __init__
         Summary: Inits an LDA object
