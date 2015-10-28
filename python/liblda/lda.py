@@ -224,7 +224,6 @@ class LDA(MLDA):
         self._coef = np.dot(coef, self._scalings.T)
 
         self._intercept -= np.dot(self._xbar, self._coef.T)
-        print(self._intercept)
 
     def _solve_lsqr(self, X, y):
         """Least squares solver.
@@ -255,7 +254,6 @@ class LDA(MLDA):
             cov, self._means.T)[0].T
         self._intercept = (-0.5 * np.diag(np.dot(self._means, self._coef.T))
                            + np.log(self.priors))
-        print("Interscept " , self._intercept)
 
     def decision_function(self, X):
         """Predict confidence scores for samples.
