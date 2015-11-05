@@ -1,5 +1,5 @@
 import numpy as np
-from liblda import MLDA
+# from liblda import MLDA
 from scipy.linalg import eigh
 from scipy.sparse import issparse
 # the LDA class can be used by simply initzialize it and use the fit and
@@ -84,7 +84,7 @@ def safe_sparse_dot(a, b, dense_output=False):
         return np.dot(a, b)
 
 
-class LDA(MLDA):
+class LDA():
 
     def __init__(self, solver='svd', priors=None):
         '''
@@ -97,7 +97,6 @@ class LDA(MLDA):
             @param (solver) default='eigen': If solver is eigen, KALDI lda estimator is used ( the default one ), if solver is 'lsqr'
             we do the least squares estimation and cannot transform the given features!
         '''
-        MLDA.__init__(self)
         self.priors = priors
         self.solver = solver
 
@@ -325,6 +324,26 @@ class LDA(MLDA):
         # return llk - normalizationconstant[:, np.newaxis]
         return np.log(self.predict_prob(sample))
 
-    def transform(self, featuremat, targetdim):
-        ldamat = super(LDA, self).estimate(targetdim)
-        return super(LDA, self).predictldafromarray(featuremat, ldamat)
+
+    def transform(self, X,n_components=None):
+        """Project data to maximize class separation.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Input data.
+        Returns
+        -------
+        X_new : array, shape (n_samples, n_components)
+            Transformed data.
+        """
+        if self.solver == 'lsqr':
+            raise NotImplementedError("transform not implemented for 'lsqr' "
+                                      "solver (use 'svd' or 'eigen').")
+
+        if self.solver == 'svd':
+            X_new = np.dot(X - self._xbar, self._scalings)
+        elif self.solver == 'eigen':
+            X_new = np.dot(X, self._scalings)
+        n_components = X.shape[1] if n_components is None \
+            else n_components
+        return X_new[:, :n_components]
