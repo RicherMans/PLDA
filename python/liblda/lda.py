@@ -1,5 +1,5 @@
 import numpy as np
-from liblda import MLDA
+# from liblda import MLDA
 from scipy.linalg import eigh
 from scipy.sparse import issparse
 # the LDA class can be used by simply initzialize it and use the fit and
@@ -84,9 +84,9 @@ def safe_sparse_dot(a, b, dense_output=False):
         return np.dot(a, b)
 
 
-class LDA(MLDA):
+class LDA():
 
-    def __init__(self, solver='lsqr', priors=None):
+    def __init__(self, solver='svd', priors=None):
         '''
         Function: __init__
         Summary: Inits an LDA object
@@ -97,7 +97,6 @@ class LDA(MLDA):
             @param (solver) default='eigen': If solver is eigen, KALDI lda estimator is used ( the default one ), if solver is 'lsqr'
             we do the least squares estimation and cannot transform the given features!
         '''
-        MLDA.__init__(self)
         self.priors = priors
         self.solver = solver
 
@@ -224,7 +223,6 @@ class LDA(MLDA):
         self._coef = np.dot(coef, self._scalings.T)
 
         self._intercept -= np.dot(self._xbar, self._coef.T)
-        print(self._intercept)
 
     def _solve_lsqr(self, X, y):
         """Least squares solver.
@@ -255,7 +253,6 @@ class LDA(MLDA):
             cov, self._means.T)[0].T
         self._intercept = (-0.5 * np.diag(np.dot(self._means, self._coef.T))
                            + np.log(self.priors))
-        print("Interscept " , self._intercept)
 
     def decision_function(self, X):
         """Predict confidence scores for samples.
@@ -327,6 +324,26 @@ class LDA(MLDA):
         # return llk - normalizationconstant[:, np.newaxis]
         return np.log(self.predict_prob(sample))
 
-    def transform(self, featuremat, targetdim):
-        ldamat = super(LDA, self).estimate(targetdim)
-        return super(LDA, self).predictldafromarray(featuremat, ldamat)
+
+    def transform(self, X,n_components=None):
+        """Project data to maximize class separation.
+        Parameters
+        ----------
+        X : array-like, shape (n_samples, n_features)
+            Input data.
+        Returns
+        -------
+        X_new : array, shape (n_samples, n_components)
+            Transformed data.
+        """
+        if self.solver == 'lsqr':
+            raise NotImplementedError("transform not implemented for 'lsqr' "
+                                      "solver (use 'svd' or 'eigen').")
+
+        if self.solver == 'svd':
+            X_new = np.dot(X - self._xbar, self._scalings)
+        elif self.solver == 'eigen':
+            X_new = np.dot(X, self._scalings)
+        n_components = X.shape[1] if n_components is None \
+            else n_components
+        return X_new[:, :n_components]

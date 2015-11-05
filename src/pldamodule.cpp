@@ -282,7 +282,10 @@ namespace kaldi{
 
     static void MPLDA_dealloc(MPlda* self)
     {
+        delete self->meanz;
+        delete self->stdvz;
         self->ob_type->tp_free((PyObject*)self);
+
     }
 
 
