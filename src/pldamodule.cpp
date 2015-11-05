@@ -206,7 +206,7 @@ namespace kaldi{
                 // The values are a tuple of (samplesize,DATA), here we dont need the samplesize
                 const Vector<double> &repr = pyarraytovector<double>((PyArrayObject* )PyTuple_GetItem(value,1));
                 double score = self->plda.LogLikelihoodRatio(transformed,1,repr);
-                scores[k].emplace_back(score);
+                scores[k].push_back(score);
                 PyErr_CheckSignals();
             }
         }
@@ -215,12 +215,12 @@ namespace kaldi{
             assert(it->second.size()>0);
             double mean = sum/it->second.size();
 
-            self->meanz->emplace(it->first,mean);
+            self->meanz->insert(std::make_pair(it->first,mean));
             double sqsum = std::accumulate(it->second.begin(),it->second.end(),0.0,[&](const double &a,const double &b){
                     return a+((b-mean) * (b-mean));
                     });
             sqsum /= it->second.size();
-            self->stdvz->emplace(it->first,sqrt(sqsum));
+            self->stdvz->insert(std::make_pair(it->first,sqrt(sqsum)));
             // Check if cancel has occured
             PyErr_CheckSignals();
         }
