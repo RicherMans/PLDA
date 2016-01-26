@@ -67,13 +67,16 @@ namespace kaldi{
         }
         auto num_speakers = u_labels.size();
         std::vector<MatrixIndexT> indices[num_speakers];
+
+
         for(auto n=0u ; n < n_samples;n++){
             indices[labels[n]].push_back(n);
         }
 
+        // We now add all the stats and keep track that the given rows of the matrix represent the respective speaker
         for(auto spk=0u; spk < num_speakers;spk ++){
             Matrix<double> tmp(indices[spk].size(),featdim);
-            tmp.CopyRows(inputfeats,indices[spk]);
+            tmp.CopyRows(inputfeats,indices[spk].data());
             stats.AddSamples(1.0/indices[spk].size(),tmp);
         }
 
