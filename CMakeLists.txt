@@ -1,11 +1,13 @@
 cmake_minimum_required(VERSION 2.6)
-project(LDAKaldi)
+project(PLDAKaldi)
 
 
 set(PACKAGE_VERSION_MAJOR 0)
 set(PACKAGE_VERSION_MINOR 1)
 set(PACKAGE_VERSION_PATCH 0)
 set(PACKAGE_VERSION ${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}.${PACKAGE_VERSION_PATCH})
+
+option(USER "USER" OFF)
 
 set(LDA_PYTHON_LIB lda)
 
@@ -61,11 +63,11 @@ set( ENV{BLA_VENDOR} "ATLAS"  )
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
   set(ENV{ATLAS_DIR} ${ATLAS_ROOT})
   if (VERBOSE)
-      #find_package(Atlas REQUIRED)
-    find_package( BLAS REQUIRED  )
+    find_package(Atlas REQUIRED)
+    #find_package( BLAS REQUIRED  )
   else ()
-      #find_package(Atlas QUIET REQUIRED)
-      find_package( BLAS QUIET REQUIRED  )
+      find_package(Atlas QUIET REQUIRED)
+      #find_package( BLAS QUIET REQUIRED  )
   endif ()
 else()
   set(ATLAS_INCLUDE_DIR ${ATLAS_ROOT}/include)
@@ -100,7 +102,7 @@ else ()
 endif()
 
 
-add_subdirectory(python)
+add_subdirectory(${PYTHONDIR})
 
 include_directories(
     ${KALDI_SRC_DIR}

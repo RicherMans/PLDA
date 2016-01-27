@@ -1,5 +1,7 @@
 find_program(PYTHON "python")
 
+
+
 if (PYTHON)
     set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in")
     set(SETUP_PY    "${CMAKE_CURRENT_BINARY_DIR}/setup.py")
@@ -17,6 +19,13 @@ if (PYTHON)
         #COMMAND ${PYTHON} ${SETUP_PY} install --user)
 
     add_custom_target(target ALL DEPENDS ${OUTPUT})
+    
+    if(USER)
+        message("User mode is on, please not that other uses may not be able to import the library")
+        install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install --user )")
+    else()
+        message("User mode is off, if installation is unsucessful please pass -DUSER=ON")
+        install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install )")
+    endif()
 
-    install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install )")
 endif()
