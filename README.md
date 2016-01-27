@@ -3,7 +3,14 @@ An LDA/PLDA estimator using KALDI in python for speaker verification tasks
 
 ## Installation ##
 
-Make sure that you have KALDI compiled and installed. Further make sure that KALDI was compiled using the shared option --shared. 
+Make sure that you have KALDI compiled and installed. Further make sure that KALDI was compiled using the option --shared, during ./conigure.
+
+Moreover to find KALDI correctly, please run:
+
+```bash
+export KALDI_ROOT=/your/path/to/root
+```
+
 Then just run:
 ```bash
 git clone https://github.com/RicherMans/PLDA
