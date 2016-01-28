@@ -8,6 +8,7 @@ set(PACKAGE_VERSION_PATCH 0)
 set(PACKAGE_VERSION ${PACKAGE_VERSION_MAJOR}.${PACKAGE_VERSION_MINOR}.${PACKAGE_VERSION_PATCH})
 
 option(USER "USER" OFF)
+option(SHARED OFF)
 
 set(LDA_PYTHON_LIB lda)
 
@@ -35,6 +36,7 @@ set(LDA_LIBRARY_OUTPUT_PATH ${LIBLDA_BINARY_DIR})
 
 set(PLDA_LIBRARY_OUTPUT_PATH ${LIBPLDA_BINARY_DIR})
 
+set(BUILD_SHARED_LIBS ON)
 #set(EXECUTABLE_NAME main)
 
 #set(EXECUTABLE_PATH main.cpp)
@@ -56,21 +58,20 @@ find_package(Kaldi REQUIRED)
 find_package(PythonLibs REQUIRED)
 find_package(NumPy REQUIRED)
 
-if (NOT ATLAS_ROOT)
-  set(ATLAS_ROOT ${KALDI_TOOLS_DIR}/ATLAS)
-endif()
-set( ENV{BLA_VENDOR} "ATLAS"  )
+#if (NOT Atlas_ROOT)
+  #set(Atlas_ROOT ${KALDI_TOOLS_DIR}/Atlas)
+#endif()
+#set( ENV{BLA_VENDOR} ATLAS)
+#set(BLA_VENDOR ATLAS)
+#set(BLAS_DIR /usr/lib64/atlas/lib)
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
-  set(ENV{ATLAS_DIR} ${ATLAS_ROOT})
   if (VERBOSE)
-    find_package(Atlas REQUIRED)
-    #find_package( BLAS REQUIRED  )
+      find_package(Atlas REQUIRED)
   else ()
       find_package(Atlas QUIET REQUIRED)
-      #find_package( BLAS QUIET REQUIRED  )
   endif ()
 else()
-  set(ATLAS_INCLUDE_DIR ${ATLAS_ROOT}/include)
+  set(Atlas_INCLUDE_DIR ${Atlas_ROOT})
 endif()
 
 add_definitions(-DDEBUG=0)
@@ -94,7 +95,7 @@ set(CXX_BASE_FLAGS "-W -Wall -Werror -Wold-style-cast ")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     # Typical flags for Linux
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_ATLAS")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_OPENBLAS")
 
     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 else ()
@@ -108,7 +109,7 @@ include_directories(
     ${KALDI_SRC_DIR}
     ${PORTAUDIO_INCLUDE_DIR}
     ${OPENFST_INCLUDE_DIR}
-    ${ATLAS_INCLUDE_DIR}
+    ${Atlas_INCLUDE_DIR}
     ${CHTK_DIR}
     ${PYTHON_INCLUDE_DIRS}
     ${NUMPY_INCLUDE_DIRS}
@@ -134,29 +135,29 @@ set(PLDA_MAIN
 
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${BINARY_DIR})
 
-add_library(chtk SHARED ${CHTK_SOURCES})
+add_library(chtk ${CHTK_SOURCES})
 target_link_libraries(chtk z)
 
-add_library(${UTILS_SHARED_LIB} SHARED ${UTILS_HEADERS})
-target_link_libraries(${UTILS_SHARED_LIB} pthread chtk dl m ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES} ${PYTHON_LIBRARIES})
+add_library(${UTILS_SHARED_LIB} ${UTILS_HEADERS})
+target_link_libraries(${UTILS_SHARED_LIB} pthread chtk dl m ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${Atlas_LIB} ${PYTHON_LIBRARIES})
 #Header only project needs to specify a langauge otherwise it crashes
 set_target_properties(${UTILS_SHARED_LIB} PROPERTIES LINKER_LANGUAGE CXX)
 
-add_library(${LDA_STATIC_LIB} SHARED ${LDA_SOURCES})
-target_link_libraries(${LDA_STATIC_LIB} chtk ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${ATLAS_LIBRARIES} )
+add_library(${LDA_STATIC_LIB} ${LDA_SOURCES})
+target_link_libraries(${LDA_STATIC_LIB} chtk ${KALDI_LIBRARIES} ${OPENFST_LIBRARY} ${Atlas_LIB})
 #Error while linking occurs if we do not include that to the static library compile flags
 #IF( CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64"  )
 #SET_TARGET_PROPERTIES(${LDA_STATIC_LIB} PROPERTIES COMPILE_FLAGS "-fPIC")
 #ENDIF(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64"  )
 
-add_library(${LDA_PYTHON_LIB} SHARED ${LDA_MAIN})
+add_library(${LDA_PYTHON_LIB} ${LDA_MAIN})
 
 set_target_properties(${LDA_PYTHON_LIB} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${LIBLDA_BINARY_DIR})
 
 target_link_libraries(${LDA_PYTHON_LIB} ${LDA_STATIC_LIB} ${UTILS_SHARED_LIB} dl m pthread chtk ${PYTHON_LIBRARIES})
 
 
-add_library(${PLDA_SHARED_LIB} SHARED ${PLDA_MAIN})
+add_library(${PLDA_SHARED_LIB} ${PLDA_MAIN})
 
 set_target_properties(${PLDA_SHARED_LIB} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${LIBPLDA_BINARY_DIR})
 
