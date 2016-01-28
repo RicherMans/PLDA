@@ -71,7 +71,7 @@ if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
       find_package(Atlas QUIET REQUIRED)
   endif ()
 else()
-  set(Atlas_INCLUDE_DIR ${Atlas_ROOT})
+  set(Atlas_INCLUDE_DIR ${Atlas_ROOT}/include)
 endif()
 
 add_definitions(-DDEBUG=0)
@@ -95,7 +95,7 @@ set(CXX_BASE_FLAGS "-W -Wall -Werror -Wold-style-cast ")
 
 if (${CMAKE_SYSTEM_NAME} MATCHES "Linux")
     # Typical flags for Linux
-    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_OPENBLAS")
+    set (CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DHAVE_ATLAS")
 
     set (CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS}")
 else ()
@@ -109,7 +109,7 @@ include_directories(
     ${KALDI_SRC_DIR}
     ${PORTAUDIO_INCLUDE_DIR}
     ${OPENFST_INCLUDE_DIR}
-    ${Atlas_INCLUDE_DIR}
+    ${ATLAS_INCLUDE_DIR}
     ${CHTK_DIR}
     ${PYTHON_INCLUDE_DIRS}
     ${NUMPY_INCLUDE_DIRS}
