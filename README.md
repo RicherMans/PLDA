@@ -4,11 +4,18 @@ An LDA/PLDA estimator using KALDI in python for speaker verification tasks
 ## Installation ##
 
 Make sure that you have KALDI compiled and installed. Further make sure that KALDI was compiled using the option --shared, during ./conigure.
+Moreover the included ATLAS within KALDI is sufficient that PLDA works. If any compilation errors happen it's most likely that not all of the ATLAS libraries was installed successfully.
 
 Moreover to find KALDI correctly, please run:
 
 ```bash
 export KALDI_ROOT=/your/path/to/root
+```
+
+if your ATLAS is installed in a different directory please set the variable ATLAS_DIR e.g.
+
+```bash
+export ATLAS_DIR=/your/atlas/dir
 ```
 
 Then just run:
@@ -17,6 +24,8 @@ git clone https://github.com/RicherMans/PLDA
 cd PLDA
 mkdir build && cd build && cmake ../ && make
 ```
+
+Per default cmake is installing the python package into your /usr/lib directory. If this is not wised, pass the option -DUSER=ON to cmake to install the packages only for the current user
 
 Voila, the python library is copied to your local users installation path.
 
