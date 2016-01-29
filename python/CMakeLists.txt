@@ -10,22 +10,24 @@ if (PYTHON)
 
     configure_file(${SETUP_PY_IN} ${SETUP_PY})
 
-    add_custom_command(OUTPUT ${OUTPUT}
-        COMMAND ${PYTHON} ${SETUP_PY} install --user
-        COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
-        DEPENDS ${DEPS})
-
     #add_custom_command(INSTALL_PY ${OUTPUT}
         #COMMAND ${PYTHON} ${SETUP_PY} install --user)
 
-    add_custom_target(target ALL DEPENDS ${OUTPUT})
-    
     if(USER)
         message("User mode is on, please not that other uses may not be able to import the library")
         install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install --user )")
+        add_custom_command(OUTPUT ${OUTPUT}
+            COMMAND ${PYTHON} ${SETUP_PY} install --user
+            COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
+            DEPENDS ${DEPS})
     else()
         message("User mode is off, if installation is unsucessful please pass -DUSER=ON")
         install(CODE "execute_process(COMMAND ${PYTHON} ${SETUP_PY} install )")
+        add_custom_command(OUTPUT ${OUTPUT}
+            COMMAND ${PYTHON} ${SETUP_PY} install
+            COMMAND ${CMAKE_COMMAND} -E touch ${OUTPUT}
+            DEPENDS ${DEPS})
     endif()
+    add_custom_target(target ALL DEPENDS ${OUTPUT})
 
 endif()

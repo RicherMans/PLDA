@@ -11,12 +11,6 @@
 #include "structmember.h"
 #include <cassert>
 
-
-
-#include "base/kaldi-common.h"
-#include "util/common-utils.h"
-#include "matrix/matrix-lib.h"
-
 #include "chtk.h"
 #include "ivector/plda.h"
 #include "kaldi-utils.hpp"
@@ -76,7 +70,7 @@ namespace kaldi{
         // We now add all the stats and keep track that the given rows of the matrix represent the respective speaker
         for(auto spk=0u; spk < num_speakers;spk ++){
             Matrix<double> tmp(indices[spk].size(),featdim);
-            tmp.CopyRows(inputfeats,indices[spk]);
+            tmp.CopyRows(inputfeats,indices[spk].data());
             stats.AddSamples(1.0/indices[spk].size(),tmp);
         }
 
