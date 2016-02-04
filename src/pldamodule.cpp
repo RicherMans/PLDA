@@ -5,10 +5,11 @@
 #include <vector>
 #include <algorithm>
 #include <unordered_map>
+#include <sstream>
 //numpy library
-#include "numpy/arrayobject.h"
+#include <numpy/arrayobject.h>
 // T_INT and all other datatypes for the class
-#include "structmember.h"
+// #include "structmember.h"
 #include <cassert>
 
 #include "chtk.h"
@@ -44,33 +45,44 @@ namespace kaldi{
         uint32_t iters=10;
         if (! PyArg_ParseTuple( args, "O!O!|k", &PyArray_Type,&py_inputfeats,&PyArray_Type,&py_labels,&iters)) return NULL;
 
+        if (! PyArray_ISUNSIGNED(py_labels)){
+            PyErr_SetString(PyExc_ValueError,"Given labels (argument 2) are not an unsigned! Set the dtype to uint!");
+            return NULL;
+        }
+        if (! PyArray_ISFLOAT(py_inputfeats)){
+            PyErr_SetString(PyExc_ValueError,"Given Input features (argument 1) are not floats! Set the dtype to float!");
+            return NULL;
+        }
         auto n_samples=py_inputfeats->dimensions[0];
         auto featdim =py_inputfeats->dimensions[1];
-
         assert(py_labels->dimensions[0]==py_inputfeats->dimensions[0]);
 
         PldaStats stats;
 
-        const Matrix<double> &inputfeats = pyarraytomatrix<double>(py_inputfeats);
+        const Matrix<npy_double> &inputfeats = pyarraytomatrix<npy_double>(py_inputfeats);
 
-        const long *labels = pyvector_to_type<long>(py_labels);
+        const npy_long *labels = pyvector_to_type<npy_long>(py_labels);
 
-        std::set<long> u_labels;
+        std::set<npy_long> u_labels;
         for (auto sample = 0u; sample < n_samples; ++sample) {
             u_labels.insert(labels[sample]);
         }
         auto num_speakers = u_labels.size();
-        std::vector<MatrixIndexT> indices[num_speakers];
+        // If we have only one speaker, we cannot do the PLDA fitting
+        if(num_speakers == 1){
+            PyErr_SetString(PyExc_ValueError,"Number of speakers is 1. Aborting PLDA esimation, at least two speakers are required!");
+            return NULL;
+        }
 
+        std::vector<MatrixIndexT> indices[num_speakers];
 
         for(auto n=0u ; n < n_samples;n++){
             indices[labels[n]].push_back(n);
         }
-
         // We now add all the stats and keep track that the given rows of the matrix represent the respective speaker
         for(auto spk=0u; spk < num_speakers;spk ++){
-            Matrix<double> tmp(indices[spk].size(),featdim);
-            tmp.CopyRows(inputfeats,indices[spk].data());
+            Matrix<npy_double> tmp(indices[spk].size(),featdim);
+            tmp.CopyRows(inputfeats,indices[spk]);
             stats.AddSamples(1.0/indices[spk].size(),tmp);
         }
 
@@ -81,6 +93,7 @@ namespace kaldi{
 
         // Plda plda;
         estimator.Estimate(self->estconfig,&(self->plda));
+        // To not sqrew up the object counter of python
         return Py_BuildValue("");
     }
 
@@ -106,12 +119,17 @@ namespace kaldi{
             std::string err("Labels need to be numpy array of ints, not strings!");
             return PyErr_Format(PyExc_ValueError,err.c_str());
         }
+        // Labels are any non Unisgned integer.
+        if (! PyArray_ISUNSIGNED(py_labels)){
+            PyErr_SetString(PyExc_ValueError,"Given labels (argument 2) are not an unsigned! Set the dtype to uint!");
+            return NULL;
+        }
         assert(py_labels->dimensions[0]==py_inpututts->dimensions[0]);
 
-        long *labels = pyvector_to_type<long>(py_labels);
+        npy_long *labels = pyvector_to_type<npy_long>(py_labels);
 
         // Get the unique labels in the number of labels, which are the speakers
-        std::set<long> u_labels;
+        std::set<npy_long> u_labels;
         for (auto sample = 0u; sample < n_samples; ++sample) {
             u_labels.insert(labels[sample]);
         }
@@ -329,7 +347,7 @@ namespace kaldi{
     };
 
 
-    static PyMethodDef libpldaModule_methods1[] = {
+    static PyMethodDef libpldaModule_methods[] = {
         {NULL}
     };
 
@@ -339,17 +357,17 @@ namespace kaldi{
         #define PyMODINIT_FUNC void
         #endif
         PyMODINIT_FUNC initlibplda(){
-        // (void) Py_InitModule("libplda",libpldaModule_methods);
-        if (PyType_Ready(&MPlda_Type) < 0)
-            return;
-        PyObject *m = Py_InitModule3("libplda", libpldaModule_methods1,
-                       "Example module that creates an extension type.");
-        if (m == NULL)
-            return;
-        import_array();
+            // (void) Py_InitModule("libplda",libpldaModule_methods);
+            if (PyType_Ready(&MPlda_Type) < 0)
+                return;
+            PyObject *m = Py_InitModule3("libplda", libpldaModule_methods,
+                           "Example module that creates an extension type.");
+            if (m == NULL)
+                return;
+            import_array();
 
-        Py_INCREF(&MPlda_Type);
-        PyModule_AddObject(m, "MPlda", (PyObject *)&MPlda_Type);
+            Py_INCREF(&MPlda_Type);
+            PyModule_AddObject(m, "MPlda", (PyObject *)&MPlda_Type);
 
         }
     }

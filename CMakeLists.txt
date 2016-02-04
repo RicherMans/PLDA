@@ -1,6 +1,8 @@
 cmake_minimum_required(VERSION 2.6)
 project(PLDAKaldi)
 
+# if building is done on Python 3.x you the following is needed:
+# -DPYTHON_EXECUTABLE=/usr/bin/python2.7 -DPYTHON_LIBRARY=/usr/lib/x86_64-linux-gnu/libpython2.7.so -DPYTHON_INCLUDE_DIR=/usr/include/python2.7/
 
 set(PACKAGE_VERSION_MAJOR 0)
 set(PACKAGE_VERSION_MINOR 1)
@@ -115,8 +117,6 @@ include_directories(
 
 set(ATLAS_LIBS ${ATLAS_LIB} ${ATLAS_ATLAS_LIBRARY} ${ATLAS_CBLAS_LIBRARY} ${ATLAS_F77BLAS_LIBRARY} ${ATLAS_LAPACK_ATLAS_LIBRARY})
 
-message(status ${ATLAS_LIBS})
-
 set(LDA_MAIN
     ${SOURCE_DIR}/ldamodule.cpp)
 
@@ -143,11 +143,11 @@ set_target_properties(${UTILS_SHARED_LIB} PROPERTIES LINKER_LANGUAGE CXX)
 #SET_TARGET_PROPERTIES(${LDA_STATIC_LIB} PROPERTIES COMPILE_FLAGS "-fPIC")
 #ENDIF(CMAKE_SYSTEM_PROCESSOR STREQUAL "x86_64"  )
 
-add_library(${LDA_PYTHON_LIB} ${LDA_MAIN})
+# add_library(${LDA_PYTHON_LIB} ${LDA_MAIN})
 
-set_target_properties(${LDA_PYTHON_LIB} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${LIBLDA_BINARY_DIR})
+# set_target_properties(${LDA_PYTHON_LIB} PROPERTIES LIBRARY_OUTPUT_DIRECTORY ${LIBLDA_BINARY_DIR})
 
-target_link_libraries(${LDA_PYTHON_LIB} ${UTILS_SHARED_LIB})
+# target_link_libraries(${LDA_PYTHON_LIB} ${UTILS_SHARED_LIB})
 
 
 add_library(${PLDA_SHARED_LIB} ${PLDA_MAIN})
