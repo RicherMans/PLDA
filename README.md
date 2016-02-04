@@ -37,6 +37,7 @@ For LDA:
 ```python
 from liblda import LDA
 lda = LDA()
+n_samples=500, featdim = 200
 X=np.random.rand(n_samples,featdim)
 # Uint is required
 Y=np.array(n_samples,dtype='uint')
@@ -48,6 +49,8 @@ For PLDA:
 ```python
 from liblda import PLDA
 plda = PLDA()
+
+n_samples=500, featdim = 200
 
 X=np.random.rand(n_samples,featdim)
 # Uint is required
