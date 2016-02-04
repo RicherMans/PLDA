@@ -34,29 +34,42 @@ Voila, the python library is copied to your local users installation path.
 Generally we use this script to do LDA/PLDA scoring. First we need to fit a model using LDA/PLDA.
 
 For LDA:
-```bash
+```python
 from liblda import LDA
 lda = LDA()
 X=np.random.rand(n_samples,featdim)
-Y=np.array(n_samples)
+# Uint is required
+Y=np.array(n_samples,dtype='uint')
 
 lda.fit(X,Y)
 ```
 
 For PLDA:
-```bash
+```python
 from liblda import PLDA
 plda = PLDA()
 
 X=np.random.rand(n_samples,featdim)
-Y=np.array(n_samples)
+# Uint is required
+Y=np.array(n_samples,dtype='uint')
 
 plda.fit(X,Y)
 ```
-Note that fitting the model in the LDA case is done using enrolment data, while for PLDA we use background data ( any data).
+Note that fitting the model in the LDA case is done using enrolment data, while for PLDA we use background data ( which can be any data).
+
+PLDA fit does also accept two extra arguments:
+
+```python
+#Transform the features first to a given target dimension. Default is keeping the dimension
+targetdim=10
+#Smoothing factor does increase the performance. Its a value between 0 and 1. Does affect the covariance matrix
+smoothing=0.5
+plda.fit(X,Y,targetdim,smoothing)
+```
+
 LDA can then after fitting be used to directly score any incoming utterance using predict_log_prob(SAMPLE)
 
-```bash
+```python
 pred = np.random.rand(featdim)
 scores = lda.predict_log_prob(pred)
 ```
@@ -66,7 +79,7 @@ For PLDA one can also do standard normalization methods such as z-norm (other no
 
 ```python
 Models_X=np.random.rand(n_samples,featdim)
-Models_Y=np.arange(n_samples)
+Models_Y=np.arange(n_samples,dtype='uint')
 transformed_vectors = plda.transform(Models_X,Models_Y)
 
 Otherdata = np.random.rand(m_samples,featdim)
@@ -77,11 +90,11 @@ And finally one can score any model against a utterance by:
 
 ```python
 Models_X=np.random.rand(n_samples,featdim)
-Models_Y=np.arange(n_samples)
+Models_Y=np.arange(n_samples,dtype='uint')
 transformed_vectors = plda.transform(Models_X,Models_Y)
 
 testutt_x=np.random.rand(n_samples,featdim)
-testutt_y=np.arange(n_samples)
+testutt_y=np.arange(n_samples,dtype='uint')
 
 transformedtest_vectors=plda.transform(testutt_x,testutt_y)
 
