@@ -2,6 +2,7 @@ import numpy as np
 # from liblda import MLDA
 from scipy.linalg import eigh
 from scipy.sparse import issparse
+from scipy.misc import logsumexp
 # the LDA class can be used by simply initzialize it and use the fit and
 # predict parameters
 
@@ -37,10 +38,10 @@ def empirical_covariance(X, assume_centered=False):
 
     if X.shape[0] == 1:
         print("Only one sample available. "
-              "You may want to reshape your data array")
+                "You may want to reshape your data array")
 
-    if assume_centered:
-        covariance = np.dot(X.T, X) / X.shape[0]
+        if assume_centered:
+            covariance = np.dot(X.T, X) / X.shape[0]
     else:
         covariance = np.cov(X.T, bias=1)
 
@@ -139,7 +140,7 @@ class LDA():
         if len(self._classes) == 2:  # treat binary case as a special case
             self.coef_ = np.array(self.coef_[1,:] - self.coef_[0,:], ndmin=2)
             self.intercept_ = np.array(self.intercept_[1] - self.intercept_[0],
-                                       ndmin=1)
+                    ndmin=1)
 
     def _solve_eigen(self, X, y):
         """Eigenvalue solver.
@@ -177,7 +178,7 @@ class LDA():
         self._scalings = evecs
         self._coef = np.dot(self._means, evecs).dot(evecs.T)
         self._intercept = (-0.5 * np.diag(np.dot(self._means, self._coef.T))
-                           + np.log(self.priors))
+                + np.log(self.priors))
 
     def _solve_svd(self, X, y):
         n_samples, featdim = X.shape
@@ -209,7 +210,7 @@ class LDA():
         # 3) Between variance scaling
         # Scale weighted centers
         X = np.dot(((np.sqrt((n_samples * self.priors) * fac)) *
-                    (self._means - self._xbar).T).T, scalings)
+            (self._means - self._xbar).T).T, scalings)
 
         _, S, V = np.linalg.svd(X, full_matrices=0)
 
@@ -218,7 +219,7 @@ class LDA():
 
         coef = np.dot(self._means - self._xbar, self._scalings)
         self._intercept = (-0.5 * np.sum(coef ** 2, axis=1)
-                           + np.log(self.priors))
+                + np.log(self.priors))
 
         self._coef = np.dot(coef, self._scalings.T)
 
@@ -250,9 +251,9 @@ class LDA():
         # Kaldi's estimation using between covar somehow doesnt work out
         cov = _class_cov(X, y, self.priors)
         self._coef = np.linalg.lstsq(
-            cov, self._means.T)[0].T
+                cov, self._means.T)[0].T
         self._intercept = (-0.5 * np.diag(np.dot(self._means, self._coef.T))
-                           + np.log(self.priors))
+                + np.log(self.priors))
 
     def decision_function(self, X):
         """Predict confidence scores for samples.
@@ -269,14 +270,15 @@ class LDA():
             case, confidence score for self.classes_[1] where >0 means this
             class would be predicted.
         """
+
         if not hasattr(self, '_coef') or self._coef is None:
-            raise ValueError("This %(name)s instance is not fitted "
-                             "yet" % {'name': type(self).__name__})
+            raise ValueError("This %(name)s instance is not fitted yet" % {'name': type(self).__name__})
 
         n_features = self._coef.shape[1]
+
         if X.shape[1] != n_features:
             raise ValueError("X has %d features per sample; expecting %d"
-                             % (X.shape[1], n_features))
+                    % (X.shape[1], n_features))
 
         scores = safe_sparse_dot(X, self._coef.T, True) + self._intercept
         return scores.ravel() if scores.shape[1] == 1 else scores
@@ -322,7 +324,10 @@ class LDA():
         # llk = (values - values.max(axis=1)[:, np.newaxis])
         # normalizationconstant = logsumexp(llk, axis=1)
         # return llk - normalizationconstant[:, np.newaxis]
-        return np.log(self.predict_prob(sample))
+        values = self.decision_function(sample)
+        llk = (values - values.max(axis=1)[:, np.newaxis])
+        normalizationconstant = logsumexp(llk, axis=1)
+        return llk - normalizationconstant[:, np.newaxis]
 
 
     def transform(self, X,n_components=None):
@@ -338,12 +343,12 @@ class LDA():
         """
         if self.solver == 'lsqr':
             raise NotImplementedError("transform not implemented for 'lsqr' "
-                                      "solver (use 'svd' or 'eigen').")
+                    "solver (use 'svd' or 'eigen').")
 
-        if self.solver == 'svd':
-            X_new = np.dot(X - self._xbar, self._scalings)
+            if self.solver == 'svd':
+                X_new = np.dot(X - self._xbar, self._scalings)
         elif self.solver == 'eigen':
             X_new = np.dot(X, self._scalings)
         n_components = X.shape[1] if n_components is None \
-            else n_components
+                else n_components
         return X_new[:, :n_components]
