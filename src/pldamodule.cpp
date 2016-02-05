@@ -105,7 +105,6 @@ namespace kaldi{
         uint32_t targetdim = 0;
         if (! PyArg_ParseTuple( args, "O!O!|kf", &PyArray_Type,&py_inpututts,&PyArray_Type,&py_labels,&targetdim,&smoothfactor)) return NULL;
         std::map<uint32_t,Stats> speakertoutts;
-        PyObject *retdict = PyDict_New();
 
         const Matrix<double> &inputfeats = pyarraytomatrix<double>(py_inpututts);
         auto n_samples=py_inpututts->dimensions[0];
@@ -116,7 +115,7 @@ namespace kaldi{
         }
         // Labels are strings!
         if (py_labels->descr->kind == 'S'){
-            std::string err("Labels need to be numpy array of ints, not strings!");
+            std::string err("Labels need to be numpy array of uints, not strings!");
             return PyErr_Format(PyExc_ValueError,err.c_str());
         }
         // Labels are any non Unisgned integer.
@@ -148,6 +147,8 @@ namespace kaldi{
         if (smoothfactor != 1.0){
             self->plda.SmoothWithinClassCovariance(smoothfactor);
         }
+
+        PyObject *retdict = PyDict_New();
 
         for(std::map<uint32_t,Stats>::iterator it=speakertoutts.begin();it!=speakertoutts.end();it++){
             auto samplesize=it->second.size;

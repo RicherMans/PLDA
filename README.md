@@ -78,12 +78,13 @@ scores = lda.predict_log_prob(pred)
 ```
 the predict_log_prob method returns a list where each element in the last represents the likelihood for the indexced class.
 
-For PLDA one can also do standard normalization methods such as z-norm (other norms are not implemented yet). For this case, simply transform your enrolment vectors (labeld as Models_X,Models_Y) into the PLDA space and then normalize them using any other data.
+For PLDA one can also do standard normalization methods such as z-norm (other norms are not implemented yet). For this case, simply transform your enrolment vectors (labeld as ENROL_X,ENROL_Y) into the PLDA space and then normalize them using any other data ( but do not use the background data from .fit() ).
+Generally it is recommended to have an held out set to do this estimation. The normalization procedure will then estimate the mean and variance of the scores of the enrolment models against the held out set (Otherdata).
 
 ```python
-Models_X=np.random.rand(n_samples,featdim)
-Models_Y=np.arange(n_samples,dtype='uint')
-transformed_vectors = plda.transform(Models_X,Models_Y)
+ENROL_X=np.random.rand(n_samples,featdim)
+ENROL_Y=np.arange(n_samples,dtype='uint')
+transformed_vectors = plda.transform(ENROL_X,ENROL_Y)
 
 Otherdata = np.random.rand(m_samples,featdim)
 plda.norm(Otherdata,transformed_vectors)
@@ -103,6 +104,9 @@ transformedtest_vectors=plda.transform(testutt_x,testutt_y)
 
 for model,modelvec in transformed_vectors.iteritems():
   for testutt,testvec in transformedtest_vectors.iteritems():
+    #model is an integer which represents the current class
+    #modelvec is a tuple consisting of (samplesize,datavector)
+    #testvec is a tuple consisting of (samplesize,datavector)
     score=plda.score(model,modelvec,testvec)
 
 ```
