@@ -65,9 +65,7 @@ PLDA fit does also accept two extra arguments:
 ```python
 #Transform the features first to a given target dimension. Default is keeping the dimension
 targetdim=10
-#Smoothing factor does increase the performance. Its a value between 0 and 1. Does affect the covariance matrix
-smoothing=0.5
-plda.fit(X,Y,targetdim,smoothing)
+plda.fit(X,Y,targetdim)
 ```
 
 LDA can then after fitting be used to directly score any incoming utterance using predict_log_prob(SAMPLE)
@@ -84,11 +82,18 @@ Generally it is recommended to have an held out set to do this estimation. The n
 ```python
 ENROL_X=np.random.rand(n_samples,featdim)
 ENROL_Y=np.arange(n_samples,dtype='uint')
-transformed_vectors = plda.transform(ENROL_X,ENROL_Y)
+#Smoothing factor does increase the performance. Its a value between 0 and 1. #Does affect the covariance matrix. Optional!
+smoothing=0.5
+
+#Transform the features first to a given target dimension. Default is keeping the dimension
+targetdim=10
+
+transformed_vectors = plda.transform(ENROL_X,ENROL_Y,targetdim,smoothing)
 
 Otherdata = np.random.rand(m_samples,featdim)
 plda.norm(Otherdata,transformed_vectors)
 ```
+Note that if targetdim is given, all future plda.transform() calls also need targetdim as a valid parameter
 
 And finally one can score any model against a utterance by:
 
