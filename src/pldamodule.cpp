@@ -16,6 +16,11 @@
 #include "ivector/plda.h"
 #include "kaldi-utils.hpp"
 
+#ifdef DEBUG
+    #define PRINT_DEBUG(lab,x) do { std::cerr << lab << "\t" << x <<std::endl;  } while (0)
+#else
+    #define PRINT_DEBUG(lab,x) do {} while (0)
+#endif
 namespace kaldi{
 
 
@@ -43,8 +48,10 @@ namespace kaldi{
         PyArrayObject* py_labels;
         // Default number of iterations is 10
         uint32_t iters=10;
-        if (! PyArg_ParseTuple( args, "O!O!|k", &PyArray_Type,&py_inputfeats,&PyArray_Type,&py_labels,&iters)) return NULL;
+        PRINT_DEBUG("Message","Starting PLDA");
+        if (! PyArg_ParseTuple( args, "O!O!|i", &PyArray_Type,&py_inputfeats,&PyArray_Type,&py_labels,&iters)) return NULL;
 
+        PRINT_DEBUG("Iterations",iters);
         if (! PyArray_ISUNSIGNED(py_labels)){
             PyErr_SetString(PyExc_ValueError,"Given labels (argument 2) are not an unsigned! Set the dtype to uint!");
             return NULL;
@@ -53,8 +60,11 @@ namespace kaldi{
             PyErr_SetString(PyExc_ValueError,"Given Input features (argument 1) are not floats! Set the dtype to float!");
             return NULL;
         }
+
         auto n_samples=py_inputfeats->dimensions[0];
+        PRINT_DEBUG("n_samples",n_samples);
         auto featdim =py_inputfeats->dimensions[1];
+        PRINT_DEBUG("featdim",featdim);
         assert(py_labels->dimensions[0]==py_inputfeats->dimensions[0]);
 
         PldaStats stats;
@@ -68,6 +78,7 @@ namespace kaldi{
             u_labels.insert(labels[sample]);
         }
         auto num_speakers = u_labels.size();
+        PRINT_DEBUG("Number of speakers",num_speakers);
         // If we have only one speaker, we cannot do the PLDA fitting
         if(num_speakers == 1){
             PyErr_SetString(PyExc_ValueError,"Number of speakers is 1. Aborting PLDA esimation, at least two speakers are required!");
@@ -82,7 +93,7 @@ namespace kaldi{
         // We now add all the stats and keep track that the given rows of the matrix represent the respective speaker
         for(auto spk=0u; spk < num_speakers;spk ++){
             Matrix<npy_double> tmp(indices[spk].size(),featdim);
-            tmp.CopyRows(inputfeats,indices[spk]);
+            tmp.CopyRows(inputfeats,indices[spk].data());
             stats.AddSamples(1.0/indices[spk].size(),tmp);
         }
 
