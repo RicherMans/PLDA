@@ -138,8 +138,8 @@ class LDA():
             self._solve_eigen(features,labels)
 
         if len(self._classes) == 2:  # treat binary case as a special case
-            self.coef_ = np.array(self.coef_[1,:] - self.coef_[0,:], ndmin=2)
-            self.intercept_ = np.array(self.intercept_[1] - self.intercept_[0],
+            self._coef = np.array(self._coef[1,:] - self._coef[0,:], ndmin=2)
+            self._intercept = np.array(self._intercept[1] - self._intercept[0],
                     ndmin=1)
 
     def _solve_eigen(self, X, y):

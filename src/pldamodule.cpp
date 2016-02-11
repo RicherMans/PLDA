@@ -93,7 +93,7 @@ namespace kaldi{
         // We now add all the stats and keep track that the given rows of the matrix represent the respective speaker
         for(auto spk=0u; spk < num_speakers;spk ++){
             Matrix<npy_double> tmp(indices[spk].size(),featdim);
-            tmp.CopyRows(inputfeats,indices[spk].data());
+            tmp.CopyRows(inputfeats,indices[spk]);
             stats.AddSamples(1.0/indices[spk].size(),tmp);
         }
 
