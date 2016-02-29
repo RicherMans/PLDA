@@ -136,11 +136,12 @@ class LDA():
             self._solve_svd(features, labels)
         elif self.solver == 'eigen':
             self._solve_eigen(features,labels)
-
-        if len(self._classes) == 2:  # treat binary case as a special case
-            self._coef = np.array(self._coef[1,:] - self._coef[0,:], ndmin=2)
-            self._intercept = np.array(self._intercept[1] - self._intercept[0],
-                    ndmin=1)
+        print "Coef before" ,self._coef.shape
+        # if len(self._classes) == 2:  # treat binary case as a special case
+        #     self._coef = np.array(self._coef[1,:] - self._coef[0,:], ndmin=2)
+        #     self._intercept = np.array(self._intercept[1] - self._intercept[0],
+        #             ndmin=1)
+        print "Coef " ,self._coef.shape
 
     def _solve_eigen(self, X, y):
         """Eigenvalue solver.
@@ -281,6 +282,7 @@ class LDA():
                     % (X.shape[1], n_features))
 
         scores = safe_sparse_dot(X, self._coef.T, True) + self._intercept
+        print(scores.shape)
         return scores.ravel() if scores.shape[1] == 1 else scores
 
     def predict_prob(self, sample):
