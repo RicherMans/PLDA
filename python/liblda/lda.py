@@ -278,9 +278,9 @@ class LDA():
         scores = safe_sparse_dot(X, self._coef.T, True) + self._intercept
         return scores.ravel() if scores.shape[1] == 1 else scores
 
-    def predict_prob(self, sample):
+    def predict_proba(self, sample):
         '''
-        Function: predict_prob
+        Function: predict_proba
         Summary: Predicts the probability of the given sample. Previously you need have to run leastsquares or some other fitting method
         Examples:
         Attributes:
@@ -303,9 +303,9 @@ class LDA():
             prob /= prob.sum(axis=1).reshape((prob.shape[0], -1))
             return prob
 
-    def predict_log_prob(self, sample):
+    def predict_log_proba(self, sample):
         '''
-        Function: predict_log_prob
+        Function: predict_log_proba
         Summary: The same function as predict_prob, but returns the log probability
         Examples:
         Attributes:
