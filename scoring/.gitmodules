@@ -1,0 +1,3 @@
+[submodule "htkpython"]
+	path = htkpython
+	url = ssh://hedi7@202.120.38.125:5566/slfs1/users/hedi7/repo/htkpython.git
