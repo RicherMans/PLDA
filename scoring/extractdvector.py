@@ -107,6 +107,7 @@ def parse_args():
     parser.add_argument(
         '-e', '--extractionmethod', choices=methods, default='mean', help='The method which should be used to extract dvectors'
     )
+    parser.add_argument('-t','--test',help="Testing is enabled, per utterance extraction of dvectors!",default=False,action='store_true')
     parser.add_argument('-del', '--delimiter', type=str,
                         help='If we extract the features from the given data, we use the delimiter (default : %(default)s) to obtain the splits.',
                         default="_")
@@ -131,7 +132,7 @@ def main():
     log.basicConfig(
         level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
 
-    inputdata = parseinputfiletomodels(args.inputdata, args.delimiter, args.indices)
+    inputdata = parseinputfiletomodels(args.inputdata, args.delimiter, args.indices,test=args.test)
     log.info("Input data consists of %i speakers."%(len(inputdata.keys())))
     extractmethod = methods[args.extractionmethod]
     log.info("Extracting dvectors [%s] for the input data"%(args.extractionmethod))

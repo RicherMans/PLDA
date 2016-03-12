@@ -25,7 +25,6 @@ except:
 import sys
 import argparse
 from collections import defaultdict
-import itertools
 import marshal
 from extractdvector import *
 
@@ -123,15 +122,15 @@ def main():
 
     marshalformat = False
     # Check if the given data is in marshal format
-    with open(args.bkgdata, 'rb') as bkg, open(args.enroldata, 'rb') as enrol, open(args.testdata, 'rb') as testd:
+    with open(args.bkgdata, 'rb') as bkg, open(args.inputdata, 'rb') as enrol, open(args.testdata, 'rb') as testd:
         # If marshalled data is given, it was preprocessed using dvectors
-        bkgdata, enroldata, testdata = checkmarshalled([bkg, enrol, testd])
+        bkgdata, inputdata, testdata = checkmarshalled([bkg, enrol, testd])
 
         # Check if marshal format is given, so that we do not need to reextract
         # the data
-        if bkgdata and enroldata and testdata:
+        if bkgdata and inputdata and testdata:
             marshalformat = True
-        enroldvectors, enrollabels = enroldata
+        enroldvectors, enrollabels = inputdata
         bkgdvectors, bkglabels = bkgdata
         testdvectors, testlabels = testdata
 
@@ -140,7 +139,7 @@ def main():
         # To the argparser, therefore we just use strings and call the method
         # later
         bkgdata = parseinputfiletomodels(
-            args.bkgdata, args.delimiter, args.indices)
+            args.bkgdata, args.delimiter, args.indices,test=True)
         enroldata = parseinputfiletomodels(
             args.inputdata, args.delimiter, args.indices)
         testdata = parseinputfiletomodels(
@@ -198,7 +197,7 @@ def main():
     if args.znorm:
         log.debug("Running Z-Norm")
         znormdata = parseinputfiletomodels(
-            args.znorm, args.delimiter, args.indices)
+            args.znorm, args.delimiter, args.indices,test=True)
         log.info("Extracting z-norm data dvectors")
         znormdvectors, znormlabels = extractvectors(znormdata, extractmethod)
         log.info("Estimating z-norm")
