@@ -135,8 +135,8 @@ def main():
     log.info("Input data consists of %i speakers."%(len(inputdata.keys())))
     extractmethod = methods[args.extractionmethod]
     log.info("Extracting dvectors [%s] for the input data"%(args.extractionmethod))
-    dvectors = extractvectors(inputdata,extractmethod)
-    dump(dvectors,args.outputdvectors)
+    dvectors,labels = extractvectors(inputdata,extractmethod)
+    dump((dvectors,labels),args.outputdvectors)
 
 
 

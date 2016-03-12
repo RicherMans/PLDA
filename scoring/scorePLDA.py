@@ -26,6 +26,7 @@ import sys
 import argparse
 from collections import defaultdict
 import itertools
+import marshal
 
 
 def float_zeroone(value):
@@ -56,6 +57,8 @@ def readDir(input_dir):
     return foundfiles
 
 # Parses Mlf file
+
+
 def mlffile(f):
     tests = defaultdict(list)
     with open(f, 'r') as mlfpointer:
@@ -73,7 +76,7 @@ def mlffile(f):
                 testutt = "-".join(modeltotestutt[1:])
                 # Get the next line which identifies the target model
                 enrolemodel = next(mlfpointer).rstrip('\n')
-                tests[enrolemodel].append([testutt,targetmdl])
+                tests[enrolemodel].append([testutt, targetmdl])
     return tests
 
 
@@ -158,7 +161,8 @@ def parse_args():
         'scoreoutfile', default=sys.stdout, type=argparse.FileType('w'), nargs="?", metavar="STDOUT")
     parser.add_argument('-z', '--znorm', type=str,
                         help="Does Z-Norm with the given dataset.Z-Norm generally improves the performance")
-    parser.add_argument('--zutt',help="Number of znorm utterances, default is all the bkg size",type=int)
+    parser.add_argument(
+        '--zutt', help="Number of znorm utterances, default is all the bkg size", type=int)
     parser.add_argument(
         '-e', '--extractionmethod', choices=methods, default='mean', help='The method which should be used to extract dvectors'
     )
@@ -170,7 +174,7 @@ def parse_args():
     parser.add_argument(
         '--iters', type=int, help="Number of iterations for the PLDA estimation, default is %(default)s", default=10)
     parser.add_argument(
-        '-id', '--indices', help="The indices of the given splits which are used to determinate the speaker labels! default is rsr %(default)s", nargs="+", default=[0, 2],type=int)
+        '-id', '--indices', help="The indices of the given splits which are used to determinate the speaker labels! default is rsr %(default)s", nargs="+", default=[0, 2], type=int)
     parser.add_argument('-d', '--debug', help="Sets the debug level. A value of 10 represents debug. The lower the value, the more output. Default is INFO",
                         type=int, default=log.INFO)
     return parser.parse_args()
@@ -185,29 +189,63 @@ def extractvectors(datadict, extractmethod):
     return np.array(dvectors), np.array(labels)
 
 
+def checkmarshalled(files):
+    '''
+    Function: checkmarshalled
+    Summary: Checks if the given files in a list are marshalled or not by simply opening them.
+    Examples: checkmarshalled([file1,file2,file3])
+    Attributes:
+        @param (files):List of opened files (open('rb'))
+    Returns: A list of the given opened files if sucessful, otherwise none
+    '''
+    marshalledfiles = []
+    for f in files:
+        try:
+            marshalledfiles.append(marshal.load(f))
+        except:
+            return
+    return marshalledfiles
+
+
 def main():
     args = parse_args()
     log.basicConfig(
         level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
 
-    # Note that I just dont know hot to add these extra parameters ( delim and indices)
-    # To the argparser, therefore we just use strings and call the method later
-    bkgdata = parseinputfiletomodels(
-        args.bkgdata, args.delimiter, args.indices)
-    enroldata = parseinputfiletomodels(
-        args.inputdata, args.delimiter, args.indices)
-    testdata = parseinputfiletomodels(
-        args.testdata, args.delimiter, args.indices, test=True)
+    marshalformat = False
+    # Check if the given data is in marshal format
+    with open(args.bkgdata, 'rb') as bkg, open(args.enroldata, 'rb') as enrol, open(args.testdata, 'rb') as testd:
+        # If marshalled data is given, it was preprocessed using dvectors
+        bkgdata, enroldata, testdata = checkmarshalled([bkg, enrol, testd])
 
-    extractmethod = methods[args.extractionmethod]
+        # Check if marshal format is given, so that we do not need to reextract
+        # the data
+        if bkgdata and enroldata and testdata:
+            marshalformat = True
+        enroldvectors, enrollabels = enroldata
+        bkgdvectors, bkglabels = bkgdata
+        testdvectors, testlabels = testdata
 
-    # Extraction of the dvectors
-    log.info("Extracting dvectors for enrolment data")
-    enroldvectors, enrollabels = extractvectors(enroldata, extractmethod)
-    log.info("Extracting dvectors for background data")
-    bkgdvectors, bkglabels = extractvectors(bkgdata, extractmethod)
-    log.info("Extracting dvectors for test data")
-    testdvectors, testlabels = extractvectors(testdata, extractmethod)
+    if not marshalformat:
+        # Note that I just dont know hot to add these extra parameters ( delim and indices)
+        # To the argparser, therefore we just use strings and call the method
+        # later
+        bkgdata = parseinputfiletomodels(
+            args.bkgdata, args.delimiter, args.indices)
+        enroldata = parseinputfiletomodels(
+            args.inputdata, args.delimiter, args.indices)
+        testdata = parseinputfiletomodels(
+            args.testdata, args.delimiter, args.indices, test=True)
+
+        extractmethod = methods[args.extractionmethod]
+
+        # Extraction of the dvectors
+        log.info("Extracting dvectors for enrolment data")
+        enroldvectors, enrollabels = extractvectors(enroldata, extractmethod)
+        log.info("Extracting dvectors for background data")
+        bkgdvectors, bkglabels = extractvectors(bkgdata, extractmethod)
+        log.info("Extracting dvectors for test data")
+        testdvectors, testlabels = extractvectors(testdata, extractmethod)
 
     # Debugging information
     log.debug("Enrol dvectors have dimension (%i,%i) and overall %i labels" % (
@@ -255,7 +293,7 @@ def main():
         log.info("Extracting z-norm data dvectors")
         znormdvectors, znormlabels = extractvectors(znormdata, extractmethod)
         log.info("Estimating z-norm")
-        plda.norm(znormdvectors, enroltransform,args.zutt)
+        plda.norm(znormdvectors, enroltransform, args.zutt)
 
     errors = 0
     log.info("Beginning scoring")
@@ -275,7 +313,7 @@ def main():
             score = plda.score(enrolspk, enroltransform[
                                enrolspk], testtransform[testspktonum[testutt]])
             args.scoreoutfile.write(
-                "{} {}-{} {:.3f}\n".format(targetmdl,enrolemodel, testutt, score))
+                "{} {}-{} {:.3f}\n".format(targetmdl, enrolemodel, testutt, score))
     if errors > 0:
         log.warn(
             "Overall %i errors occured during the testing phase!" % (errors))
