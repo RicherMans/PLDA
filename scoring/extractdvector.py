@@ -138,6 +138,7 @@ def main():
     dvectors,labels = extractvectors(inputdata,extractmethod)
     dump((dvectors,labels),args.outputdvectors)
 
+    log.info("Extraction done!")
 
 
 
