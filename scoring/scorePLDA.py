@@ -27,6 +27,7 @@ import argparse
 from collections import defaultdict
 import itertools
 import marshal
+from extractdvector import *
 
 
 def float_zeroone(value):
@@ -35,30 +36,7 @@ def float_zeroone(value):
         raise argparse.ArgumentTypeError('Value has to be between 0 and 1')
     return float_repr
 
-
-def readFeats(value):
-
-    if os.path.isfile(value):
-        return open(value, 'r').read().splitlines()
-    else:
-        return readDir(value)
-
-
-def readDir(input_dir):
-    '''
-    Reads from the given Inputdir recursively down and returns all files in the directories.
-    Be careful since there is not a check if the file is of a specific type!
-    '''
-    foundfiles = []
-    for root, dirs, files in os.walk(input_dir):
-        for f in files:
-            if os.path.isfile(os.path.join(root, f)):
-                foundfiles.append(os.path.abspath(os.path.join(root, f)))
-    return foundfiles
-
 # Parses Mlf file
-
-
 def mlffile(f):
     tests = defaultdict(list)
     with open(f, 'r') as mlfpointer:
@@ -79,66 +57,7 @@ def mlffile(f):
                 tests[enrolemodel].append([testutt, targetmdl])
     return tests
 
-
-def parseinputfiletomodels(filepath, delim, ids, test=False):
-    '''
-    Function: parseinputfiletomodels
-    Summary: Parses the given filepath into a dict of speakers and its uttrances
-    Examples: parseinputfiletomodels('bkg.scp','_',[0,2])
-    Attributes:
-        @param (filepath):Path to the dataset. Dataset consists of absolute files
-        @param (delim):Delimited in how to extract the speaker from the filename
-        @param (ids):After splitting the filename using delim, the indices which parts are taken to be the speaker
-        @param (test):If true, test will result in using the whole utterance name as speaker model
-    Returns: Dict which keys are the speaker and values are a list of utterances
-    '''
-    lines = readFeats(filepath)
-    speakertoutts = defaultdict(list)
-    for line in lines:
-        line = line.rstrip("\n")
-        fname = line.split("/")[-1]
-        fname, ext = os.path.splitext(fname)
-        splits = fname.split(delim)
-        # If we have no test option, we split the filename with the give id's
-        speakerid = delim.join([splits[id] for id in ids])
-        if test:
-            speakerid = delim.join(splits)
-        speakertoutts[speakerid].append(line)
-    return speakertoutts
-
-
-def getnormalizedvector(utt):
-    '''
-    Function: getnormalizedvector
-    Summary: Reads in the utterance given as utt and returns a length normalized vector
-    Examples: getnormalizedvector('myfeat.plp')
-    Attributes:
-        @param (utt):Path to the utterance which needs to be read
-    Returns: A numpy array
-    '''
-    feat = np.array(htkfeature.read(utt)[0])
-
-    denom = np.linalg.norm(feat, axis=1)
-    return feat / denom[:, np.newaxis]
-
-
-def extractdvectormax(utt):
-    # Average over the saples
-    return np.max(getnormalizedvector(utt), axis=0)
-
-
-def extractdvectormean(utt):
-    # Average over the saples
-    return np.mean(getnormalizedvector(utt), axis=0)
-
-
-def extractdvectorvar(utt):
-    # normalizedfeat = map(normalize, feat)
-    # Average over the saples over the feature dim
-    # normalized has dimensions (n_samples,featdim)
-    # We Do not use np.diag(np.cov()), because somehow memory overflows with it
-    return np.var(getnormalizedvector(utt), axis=0)
-
+# Imported from dvector
 methods = {
     'mean': extractdvectormean,
     'max': extractdvectormax,
@@ -178,16 +97,6 @@ def parse_args():
     parser.add_argument('-d', '--debug', help="Sets the debug level. A value of 10 represents debug. The lower the value, the more output. Default is INFO",
                         type=int, default=log.INFO)
     return parser.parse_args()
-
-
-def extractvectors(datadict, extractmethod):
-    dvectors = []
-    labels = []
-    for spk, v in datadict.iteritems():
-        dvectors.extend(itertools.imap(extractmethod, v))
-        labels.extend([spk for i in xrange(len(v))])
-    return np.array(dvectors), np.array(labels)
-
 
 def checkmarshalled(files):
     '''
