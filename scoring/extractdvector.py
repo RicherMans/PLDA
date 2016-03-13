@@ -13,7 +13,7 @@ import sys
 import argparse
 from collections import defaultdict
 import itertools
-from marshal import dump
+from cPickle import dump
 
 
 def getnormalizedvector(utt):
@@ -132,7 +132,8 @@ def extractvectors(datadict, extractmethod):
 
 def extractspktovectors(datadict,extractmethod):
     for spk, v in datadict.iteritems():
-        datadict[spk] = np.array(itertools.imap(extractmethod, v))
+        datadict[spk] = np.fromiter(list(itertools.imap(extractmethod, v))[0],np.float64)
+
     return datadict
 
 
@@ -152,7 +153,7 @@ def main():
         "Extracting dvectors [%s] for the input data" % (args.extractionmethod))
     dvectors = extractspktovectors(inputdata, extractmethod)
     # Dvectors is a dict with "utt":[dvector] elements
-    dump(dvectors, args.outputdvectors)
+    dump(dict(dvectors), args.outputdvectors)
 
     log.info("Extraction done!")
 
