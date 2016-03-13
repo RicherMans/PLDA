@@ -27,6 +27,7 @@ import argparse
 from collections import defaultdict
 import marshal
 from extractdvector import *
+import cPickle
 
 
 def float_zeroone(value):
@@ -117,13 +118,22 @@ def checkmarshalled(files):
             return
     return marshalledfiles
 
+def checkCPickle(files):
+    pickledfiles = []
+    for f in files:
+        try:
+            pickledfiles.append(cPickle.load(f))
+        except:
+            return
+    return pickledfiles
+
 
 def main():
     args = parse_args()
     log.basicConfig(
         level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
 
-    marshalformat = False
+    pickledformat = False
     # Check if the given data is in marshal format
     with open(args.bkgdata, 'rb') as bkg, open(args.inputdata, 'rb') as enrol, open(args.testdata, 'rb') as testd:
         # If marshalled data is given, it was preprocessed using dvectors
@@ -132,7 +142,14 @@ def main():
         # Check if marshal format is given, so that we do not need to reextract
         # the data
         if bkgdata and inputdata and testdata:
-            marshalformat = True
+            pickledformat = True
+        else:
+            bkgdata,inputdata,testdata = checkCPickle([bkg, enrol, testd])
+
+            if bkgdata and inputdata and testdata:
+                pickledformat = True
+            else:
+                continue
         enroldvectors = inputdata
         bkgdvectors = bkgdata
         testdvectors = testdata
@@ -148,7 +165,7 @@ def main():
         for spk, v in testlabels.iteritems():
             testlabels.extend([spk for i in xrange(len(v))])
 
-    if not marshalformat:
+    if not pickledformat:
         # Note that I just dont know hot to add these extra parameters ( delim and indices)
         # To the argparser, therefore we just use strings and call the method
         # later
