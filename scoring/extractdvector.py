@@ -69,7 +69,7 @@ def readFeats(value):
         return readDir(value)
 
 
-def parseinputfiletomodels(filepath, delim, ids, test=False):
+def parseinputfiletomodels(filepath, delim, ids):
     '''
     Function: parseinputfiletomodels
     Summary: Parses the given filepath into a dict of speakers and its uttrances
@@ -77,8 +77,7 @@ def parseinputfiletomodels(filepath, delim, ids, test=False):
     Attributes:
         @param (filepath):Path to the dataset. Dataset consists of absolute files
         @param (delim):Delimited in how to extract the speaker from the filename
-        @param (ids):After splitting the filename using delim, the indices which parts are taken to be the speaker
-        @param (test):If true, test will result in using the whole utterance name as speaker model
+        @param (ids):After splitting the filename using delim, the indices which parts are taken to be the speaker. If none is given we take the whole utterance
     Returns: Dict which keys are the speaker and values are a list of utterances
     '''
     lines = readFeats(filepath)
@@ -89,8 +88,9 @@ def parseinputfiletomodels(filepath, delim, ids, test=False):
         fname, ext = os.path.splitext(fname)
         splits = fname.split(delim)
         # If we have no test option, we split the filename with the give id's
-        speakerid = delim.join([splits[id] for id in ids])
-        if test:
+        if ids:
+            speakerid = delim.join([splits[id] for id in ids])
+        else:
             speakerid = delim.join(splits)
         speakertoutts[speakerid].append(line)
     return speakertoutts
@@ -112,6 +112,9 @@ def parse_args():
     parser.add_argument(
         '-e', '--extractionmethod', choices=methods, default='mean', help='The method which should be used to extract dvectors'
     )
+    parser.add_argument('-del', '--delimiter', type=str,
+                        help='If we extract the features from the given data, we use the delimiter (default : %(default)s) to obtain the splits.',
+                        default="_")
     parser.add_argument('-d', '--debug', help="Sets the debug level. A value of 10 represents debug. The lower the value, the more output. Default is INFO",
                         type=int, default=log.INFO)
     return parser.parse_args()
@@ -135,7 +138,7 @@ def main():
 
     # extract the dvectors for each utterance!
     inputdata = parseinputfiletomodels(
-        args.inputdata, args.delimiter, args.indices, test=True)
+        args.inputdata, args.delimiter, ids=None)
     log.info("Input data consists of %i speakers." % (len(inputdata.keys())))
     extractmethod = methods[args.extractionmethod]
     log.info(
