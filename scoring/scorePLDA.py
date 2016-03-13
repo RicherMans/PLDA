@@ -101,31 +101,47 @@ def parse_args():
     return parser.parse_args()
 
 
-def checkmarshalled(files):
+def checkmarshalled(marshalfile):
     '''
     Function: checkmarshalled
     Summary: Checks if the given files in a list are marshalled or not by simply opening them.
-    Examples: checkmarshalled([file1,file2,file3])
+    Examples: checkmarshalled(file1)
     Attributes:
         @param (files):List of opened files (open('rb'))
     Returns: A list of the given opened files if sucessful, otherwise none
     '''
-    marshalledfiles = []
-    for f in files:
-        try:
-            marshalledfiles.append(marshal.load(f))
-        except:
-            return
-    return marshalledfiles
+    try:
+        return marshal.load(marshalfile)
+    except:
+        return
 
-def checkCPickle(files):
-    pickledfiles = []
-    for f in files:
-        try:
-            pickledfiles.append(cPickle.load(f))
-        except:
-            return
-    return pickledfiles
+
+def checkCPickle(cpicklefile):
+    try:
+        return cPickle.load(cpicklefile)
+    except:
+        return
+
+
+def checkBinary(filenames):
+    '''
+    Function: checkBinary
+    Summary: Checks if filesnames are binary marshal or cpickle dumps
+    Examples:
+    Attributes:
+        @param (filenames):A list of filenames
+    Returns: Tuple of bkg,enrol,test data if they exist
+    '''
+    ret = []
+    for filename in filenames:
+        with open(filename, 'rb') as f:
+            curret = checkmarshalled(f)
+            if not curret:
+                curret = checkCPickle(f)
+                if not curret:
+                    return
+            ret.append(curret)
+    return ret
 
 
 def main():
@@ -133,27 +149,10 @@ def main():
     log.basicConfig(
         level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
 
-    pickledformat = False
-    # Check if the given data is in marshal format
-    with open(args.bkgdata, 'rb') as bkg, open(args.inputdata, 'rb') as enrol, open(args.testdata, 'rb') as testd:
-        # If marshalled data is given, it was preprocessed using dvectors
-        bkgdata, inputdata, testdata = checkmarshalled([bkg, enrol, testd])
-
-        # Check if marshal format is given, so that we do not need to reextract
-        # the data
-        if bkgdata and inputdata and testdata:
-            pickledformat = True
-        else:
-            bkgdata,inputdata,testdata = checkCPickle([bkg, enrol, testd])
-
-            if bkgdata and inputdata and testdata:
-                pickledformat = True
-            else:
-                continue
-        enroldvectors = inputdata
-        bkgdvectors = bkgdata
-        testdvectors = testdata
-
+    # Check if the given data is in marshal format or cPickle
+    enroldvectors, bkgdvectors, testdvectors = checkBinary(
+        [args.bkgdata, args.inputdata, args.testdata])
+    if all(enroldvectors, bkgdvectors, testdvectors):
         # Get the labels for the speakers
         enrollabels = []
         bkglabels = []
@@ -164,8 +163,7 @@ def main():
             bkglabels.extend([spk for i in xrange(len(v))])
         for spk, v in testlabels.iteritems():
             testlabels.extend([spk for i in xrange(len(v))])
-
-    if not pickledformat:
+    else:
         # Note that I just dont know hot to add these extra parameters ( delim and indices)
         # To the argparser, therefore we just use strings and call the method
         # later
