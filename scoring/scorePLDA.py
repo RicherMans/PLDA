@@ -135,9 +135,11 @@ def checkBinary(filenames):
     ret = []
     for filename in filenames:
         with open(filename, 'rb') as f:
-            curret = checkmarshalled(f)
+            log.debug("Check if file %s is in CPickle Format"%(filename))
+            curret = checkCPickle(f)
             if not curret:
-                curret = checkCPickle(f)
+                log.debug("Checking if file %s is in Marshal Format"%(filename))
+                curret = checkmarshalled(f)
                 if not curret:
                     return
             ret.append(curret)
@@ -150,34 +152,41 @@ def main():
         level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
 
     # Check if the given data is in marshal format or cPickle
-    enroldvectors, bkgdvectors, testdvectors = checkBinary(
-        [args.bkgdata, args.inputdata, args.testdata])
-    if all(enroldvectors, bkgdvectors, testdvectors):
+    vectors = checkBinary([args.bkgdata, args.inputdata, args.testdata])
+    if vectors:
         # Get the labels for the speakers
-        enroldvectors, enrollabels = []
-        bkgdvectors, bkglabels = []
-        testdvectors, testlabels = []
+        enrolspktoutt,bkgspktoutt,testspktoutt = vectors
 
-        for spk, v in enroldvectors.iteritems():
-            enroldvectors.extend(v)
-            enrollabels.extend([spk for i in xrange(len(v))])
-        for spk, v in bkgdvectors.iteritems():
-            bkgdvectors.extend(v)
-            bkglabels.extend([spk for i in xrange(len(v))])
-        for spk, v in testlabels.iteritems():
-            testdvectors.extend(v)
-            testlabels.extend([spk for i in xrange(len(v))])
+
+        datadim = len(enrolspktoutt.values()[0])
+        enroldvectors = np.zeros((len(enrolspktoutt.keys()),datadim))
+        bkgdvectors = np.zeros((len(bkgspktoutt.keys()),datadim))
+        testdvectors = np.zeros((len(testspktoutt.keys()),datadim))
+
+        enrollabels = np.empty(enroldvectors.shape[0],dtype=str)
+        bkglabels = np.empty(bkgdvectors.shape[0],dtype=str)
+        testlabels = np.empty(testdvectors.shape[0],dtype=str)
+        log.info("Parsing the binary input data")
+        for i,(spk, v) in enumerate(enrolspktoutt.iteritems()):
+            enroldvectors[i] = v
+            enrollabels[i]=spk
+        for i,(spk, v) in enumerate(bkgspktoutt.iteritems()):
+            bkgdvectors[i]= v
+            testlabels[i]=spk
+        for i,(spk, v) in enumerate(testspktoutt.iteritems()):
+            testdvectors[i]= v
+            testlabels[i]=spk
 
     else:
         # Note that I just dont know hot to add these extra parameters ( delim and indices)
         # To the argparser, therefore we just use strings and call the method
         # later
         bkgdata = parseinputfiletomodels(
-            args.bkgdata, args.delimiter, args.indices, test=True)
+            args.bkgdata, args.delimiter, None)
         enroldata = parseinputfiletomodels(
             args.inputdata, args.delimiter, args.indices)
         testdata = parseinputfiletomodels(
-            args.testdata, args.delimiter, args.indices, test=True)
+            args.testdata, args.delimiter, None)
 
         extractmethod = methods[args.extractionmethod]
 
@@ -239,8 +248,8 @@ def main():
             log.debug("Znorm Labels have size %i" % (len(znormlabels)))
         else:
             znormdata = parseinputfiletomodels(
-                args.znorm, args.delimiter, args.indices, test=True)\
-                log.info("Extracting z-norm data dvectors")
+                args.znorm, args.delimiter, args.indices, test=True)
+            log.info("Extracting z-norm data dvectors")
             znormdvectors, znormlabels = extractvectors(
                 znormdata, extractmethod)
         log.info("Estimating z-norm")
