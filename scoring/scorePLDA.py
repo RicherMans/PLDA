@@ -154,15 +154,20 @@ def main():
         [args.bkgdata, args.inputdata, args.testdata])
     if all(enroldvectors, bkgdvectors, testdvectors):
         # Get the labels for the speakers
-        enrollabels = []
-        bkglabels = []
-        testlabels = []
+        enroldvectors, enrollabels = []
+        bkgdvectors, bkglabels = []
+        testdvectors, testlabels = []
+
         for spk, v in enroldvectors.iteritems():
+            enroldvectors.extend(v)
             enrollabels.extend([spk for i in xrange(len(v))])
         for spk, v in bkgdvectors.iteritems():
+            bkgdvectors.extend(v)
             bkglabels.extend([spk for i in xrange(len(v))])
         for spk, v in testlabels.iteritems():
+            testdvectors.extend(v)
             testlabels.extend([spk for i in xrange(len(v))])
+
     else:
         # Note that I just dont know hot to add these extra parameters ( delim and indices)
         # To the argparser, therefore we just use strings and call the method
@@ -186,7 +191,7 @@ def main():
 
     # Debugging information
     log.debug("Enrol dvectors have dimension (%i,%i) and overall %i labels" % (
-        enroldvectors.shape[0], bkgdvectors.shape[1], len(enrollabels)))
+        enroldvectors.shape[0], enroldvectors.shape[1], len(enrollabels)))
     log.debug("Background dvectors have dimension (%i,%i)" %
               (bkgdvectors.shape[0], bkgdvectors.shape[1]))
 
@@ -225,10 +230,19 @@ def main():
     # "impostor" znorm dataset utterances
     if args.znorm:
         log.debug("Running Z-Norm")
-        znormdata = parseinputfiletomodels(
-            args.znorm, args.delimiter, args.indices, test=True)
-        log.info("Extracting z-norm data dvectors")
-        znormdvectors, znormlabels = extractvectors(znormdata, extractmethod)
+        znormdata = checkBinary([args.znorm])
+        znormlabels, znormdvectors = []
+        if znormdata:
+            for spk, v in znormdata.iteritems():
+                znormdvectors.extend(v)
+                znormlabels.extend([spk for i in xrange(len(v))])
+            log.debug("Znorm Labels have size %i" % (len(znormlabels)))
+        else:
+            znormdata = parseinputfiletomodels(
+                args.znorm, args.delimiter, args.indices, test=True)\
+                log.info("Extracting z-norm data dvectors")
+            znormdvectors, znormlabels = extractvectors(
+                znormdata, extractmethod)
         log.info("Estimating z-norm")
         plda.norm(znormdvectors, enroltransform, args.zutt)
 
