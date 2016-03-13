@@ -15,6 +15,7 @@ from collections import defaultdict
 import itertools
 from marshal import dump
 
+
 def getnormalizedvector(utt):
     '''
     Function: getnormalizedvector
@@ -28,6 +29,7 @@ def getnormalizedvector(utt):
 
     denom = np.linalg.norm(feat, axis=1)
     return feat / denom[:, np.newaxis]
+
 
 def extractdvectormax(utt):
     # Average over the samples
@@ -58,12 +60,14 @@ def readDir(input_dir):
                 foundfiles.append(os.path.abspath(os.path.join(root, f)))
     return foundfiles
 
+
 def readFeats(value):
 
     if os.path.isfile(value):
         return open(value, 'r').read().splitlines()
     else:
         return readDir(value)
+
 
 def parseinputfiletomodels(filepath, delim, ids, test=False):
     '''
@@ -97,6 +101,7 @@ methods = {
     'var': extractdvectorvar
 }
 
+
 def parse_args():
     parser = argparse.ArgumentParser(
         'Scores the enrole models against the testutterances')
@@ -107,12 +112,6 @@ def parse_args():
     parser.add_argument(
         '-e', '--extractionmethod', choices=methods, default='mean', help='The method which should be used to extract dvectors'
     )
-    parser.add_argument('-t','--test',help="Testing is enabled, per utterance extraction of dvectors!",default=False,action='store_true')
-    parser.add_argument('-del', '--delimiter', type=str,
-                        help='If we extract the features from the given data, we use the delimiter (default : %(default)s) to obtain the splits.',
-                        default="_")
-    parser.add_argument(
-        '-id', '--indices', help="The indices of the given splits which are used to determinate the speaker labels! default is rsr %(default)s", nargs="+", default=[0, 2],type=int)
     parser.add_argument('-d', '--debug', help="Sets the debug level. A value of 10 represents debug. The lower the value, the more output. Default is INFO",
                         type=int, default=log.INFO)
     return parser.parse_args()
@@ -124,23 +123,28 @@ def extractvectors(datadict, extractmethod):
     for spk, v in datadict.iteritems():
         dvectors.extend(itertools.imap(extractmethod, v))
         labels.extend([spk for i in xrange(len(v))])
-    log.debug("After extraction, we have %i dvectors and %i labels."%(len(dvectors),len(labels)))
+    log.debug("After extraction, we have %i dvectors and %i labels." %
+              (len(dvectors), len(labels)))
     return np.array(dvectors), np.array(labels)
+
 
 def main():
     args = parse_args()
     log.basicConfig(
         level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
 
-    inputdata = parseinputfiletomodels(args.inputdata, args.delimiter, args.indices,test=args.test)
-    log.info("Input data consists of %i speakers."%(len(inputdata.keys())))
+    # extract the dvectors for each utterance!
+    inputdata = parseinputfiletomodels(
+        args.inputdata, args.delimiter, args.indices, test=True)
+    log.info("Input data consists of %i speakers." % (len(inputdata.keys())))
     extractmethod = methods[args.extractionmethod]
-    log.info("Extracting dvectors [%s] for the input data"%(args.extractionmethod))
-    dvectors,labels = extractvectors(inputdata,extractmethod)
-    dump((dvectors,labels),args.outputdvectors)
+    log.info(
+        "Extracting dvectors [%s] for the input data" % (args.extractionmethod))
+    dvectors, labels = extractvectors(inputdata, extractmethod)
+    # We dont dump the labels
+    dump(dvectors, args.outputdvectors)
 
     log.info("Extraction done!")
-
 
 
 if __name__ == '__main__':
