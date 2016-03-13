@@ -135,10 +135,11 @@ def checkBinary(filenames):
     ret = []
     for filename in filenames:
         with open(filename, 'rb') as f:
-            log.debug("Check if file %s is in CPickle Format"%(filename))
+            log.debug("Check if file %s is in CPickle Format" % (filename))
             curret = checkCPickle(f)
             if not curret:
-                log.debug("Checking if file %s is in Marshal Format"%(filename))
+                log.debug("Checking if file %s is in Marshal Format" %
+                          (filename))
                 curret = checkmarshalled(f)
                 if not curret:
                     return
@@ -155,27 +156,26 @@ def main():
     vectors = checkBinary([args.bkgdata, args.inputdata, args.testdata])
     if vectors:
         # Get the labels for the speakers
-        enrolspktoutt,bkgspktoutt,testspktoutt = vectors
-
+        enrolspktoutt, bkgspktoutt, testspktoutt = vectors
 
         datadim = len(enrolspktoutt.values()[0])
-        enroldvectors = np.zeros((len(enrolspktoutt.keys()),datadim))
-        bkgdvectors = np.zeros((len(bkgspktoutt.keys()),datadim))
-        testdvectors = np.zeros((len(testspktoutt.keys()),datadim))
+        enroldvectors = np.zeros((len(enrolspktoutt.keys()), datadim))
+        bkgdvectors = np.zeros((len(bkgspktoutt.keys()), datadim))
+        testdvectors = np.zeros((len(testspktoutt.keys()), datadim))
 
-        enrollabels = np.empty(enroldvectors.shape[0],dtype=str)
-        bkglabels = np.empty(bkgdvectors.shape[0],dtype=str)
-        testlabels = np.empty(testdvectors.shape[0],dtype=str)
+        enrollabels = np.empty(enroldvectors.shape[0], dtype=str)
+        bkglabels = np.empty(bkgdvectors.shape[0], dtype=str)
+        testlabels = np.empty(testdvectors.shape[0], dtype=str)
         log.info("Parsing the binary input data")
-        for i,(spk, v) in enumerate(enrolspktoutt.iteritems()):
+        for i, (spk, v) in enumerate(enrolspktoutt.iteritems()):
             enroldvectors[i] = v
-            enrollabels[i]=spk
-        for i,(spk, v) in enumerate(bkgspktoutt.iteritems()):
-            bkgdvectors[i]= v
-            testlabels[i]=spk
-        for i,(spk, v) in enumerate(testspktoutt.iteritems()):
-            testdvectors[i]= v
-            testlabels[i]=spk
+            enrollabels[i] = getspkmodel(spk,args.delim,args.ids)
+        for i, (spk, v) in enumerate(bkgspktoutt.iteritems()):
+            bkgdvectors[i] = v
+            testlabels[i] = getspkmodel(spk, args.delim, args.ids)
+        for i, (spk, v) in enumerate(testspktoutt.iteritems()):
+            testdvectors[i] = v
+            testlabels[i] = spk
 
     else:
         # Note that I just dont know hot to add these extra parameters ( delim and indices)

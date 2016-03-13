@@ -69,6 +69,17 @@ def readFeats(value):
         return readDir(value)
 
 
+def getspkmodel(filename, delim, ids):
+    fname = filename.split("/")[-1]
+    fname, ext = os.path.splitext(fname)
+    splits = fname.split(delim)
+    # If we have no test option, we split the filename with the give id's
+    if ids:
+        return delim.join([splits[id] for id in ids])
+    else:
+        return delim.join(splits)
+
+
 def parseinputfiletomodels(filepath, delim, ids):
     '''
     Function: parseinputfiletomodels
@@ -84,14 +95,7 @@ def parseinputfiletomodels(filepath, delim, ids):
     speakertoutts = defaultdict(list)
     for line in lines:
         line = line.rstrip("\n")
-        fname = line.split("/")[-1]
-        fname, ext = os.path.splitext(fname)
-        splits = fname.split(delim)
-        # If we have no test option, we split the filename with the give id's
-        if ids:
-            speakerid = delim.join([splits[id] for id in ids])
-        else:
-            speakerid = delim.join(splits)
+        speakerid = getspkmodel(line, delim, ids)
         speakertoutts[speakerid].append(line)
     return speakertoutts
 
@@ -130,13 +134,13 @@ def extractvectors(datadict, extractmethod):
               (len(dvectors), len(labels)))
     return np.array(dvectors), np.array(labels)
 
-def extractspktovectors(datadict,extractmethod):
+
+def extractspktovectors(datadict, extractmethod):
     for spk, v in datadict.iteritems():
-        datadict[spk] = np.fromiter(list(itertools.imap(extractmethod, v))[0],np.float64)
+        datadict[spk] = np.fromiter(
+            list(itertools.imap(extractmethod, v))[0], np.float64)
 
     return datadict
-
-
 
 
 def main():
