@@ -36,6 +36,8 @@ def float_zeroone(value):
     return float_repr
 
 # Parses Mlf file
+
+
 def mlffile(f):
     tests = defaultdict(list)
     with open(f, 'r') as mlfpointer:
@@ -97,6 +99,7 @@ def parse_args():
                         type=int, default=log.INFO)
     return parser.parse_args()
 
+
 def checkmarshalled(files):
     '''
     Function: checkmarshalled
@@ -130,16 +133,27 @@ def main():
         # the data
         if bkgdata and inputdata and testdata:
             marshalformat = True
-        enroldvectors, enrollabels = inputdata
-        bkgdvectors, bkglabels = bkgdata
-        testdvectors, testlabels = testdata
+        enroldvectors = inputdata
+        bkgdvectors = bkgdata
+        testdvectors = testdata
+
+        # Get the labels for the speakers
+        enrollabels = []
+        bkglabels = []
+        testlabels = []
+        for spk, v in enroldvectors.iteritems():
+            enrollabels.extend([spk for i in xrange(len(v))])
+        for spk, v in bkgdvectors.iteritems():
+            bkglabels.extend([spk for i in xrange(len(v))])
+        for spk, v in testlabels.iteritems():
+            testlabels.extend([spk for i in xrange(len(v))])
 
     if not marshalformat:
         # Note that I just dont know hot to add these extra parameters ( delim and indices)
         # To the argparser, therefore we just use strings and call the method
         # later
         bkgdata = parseinputfiletomodels(
-            args.bkgdata, args.delimiter, args.indices,test=True)
+            args.bkgdata, args.delimiter, args.indices, test=True)
         enroldata = parseinputfiletomodels(
             args.inputdata, args.delimiter, args.indices)
         testdata = parseinputfiletomodels(
@@ -197,7 +211,7 @@ def main():
     if args.znorm:
         log.debug("Running Z-Norm")
         znormdata = parseinputfiletomodels(
-            args.znorm, args.delimiter, args.indices,test=True)
+            args.znorm, args.delimiter, args.indices, test=True)
         log.info("Extracting z-norm data dvectors")
         znormdvectors, znormlabels = extractvectors(znormdata, extractmethod)
         log.info("Estimating z-norm")
