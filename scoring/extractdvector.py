@@ -130,6 +130,13 @@ def extractvectors(datadict, extractmethod):
               (len(dvectors), len(labels)))
     return np.array(dvectors), np.array(labels)
 
+def extractspktovectors(datadict,extractmethod):
+    for spk, v in datadict.iteritems():
+        datadict[spk] = np.array(itertools.imap(extractmethod, v))
+    return datadict
+
+
+
 
 def main():
     args = parse_args()
@@ -143,8 +150,8 @@ def main():
     extractmethod = methods[args.extractionmethod]
     log.info(
         "Extracting dvectors [%s] for the input data" % (args.extractionmethod))
-    dvectors, labels = extractvectors(inputdata, extractmethod)
-    # We dont dump the labels
+    dvectors = extractspktovectors(inputdata, extractmethod)
+    # Dvectors is a dict with "utt":[dvector] elements
     dump(dvectors, args.outputdvectors)
 
     log.info("Extraction done!")
