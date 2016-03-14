@@ -247,7 +247,7 @@ def main():
     if args.znorm:
         log.debug("Running Z-Norm")
         znormdata = checkBinary([args.znorm])
-        znormlabels, znormdvectors = [],[]
+        znormdvectors, znormlabels = [],[]
         if znormdata:
             for spk, v in znormdata[0].iteritems():
                 znormdvector.extend(v)
