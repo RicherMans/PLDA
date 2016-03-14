@@ -65,6 +65,28 @@ def drawProgressBar(percent, barLen=20):
     sys.stdout.write("[ %s ] %.2f%%" % (progress, percent))
     sys.stdout.flush()
 
+def checkBinary(filenames):
+    '''
+    Function: checkBinary
+    Summary: Checks if filesnames are binary marshal or cpickle dumps
+    Examples:
+    Attributes:
+        @param (filenames):A list of filenames
+    Returns: Tuple of bkg,enrol,test data if they exist
+    '''
+    ret = []
+    for filename in filenames:
+        with open(filename, 'rb') as f:
+            log.debug("Check if file %s is in CPickle Format" % (filename))
+            curret = checkCPickle(f)
+            if not curret:
+                log.debug("Checking if file %s is in Marshal Format" %
+                          (filename))
+                curret = checkmarshalled(f)
+                if not curret:
+                    return
+            ret.append(curret)
+    return ret
 
 methods = {
     'mean': extractdvectormean,
