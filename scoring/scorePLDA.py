@@ -249,9 +249,11 @@ def main():
         znormdata = checkBinary([args.znorm])
         znormdvectors, znormlabels = [], []
         if znormdata:
+            # Znormdata is a list with only one element
             for spk, v in znormdata[0].iteritems():
-                znormdvectors.extend(v)
+                znormdvectors.append(v)
                 znormlabels.extend([spk for i in xrange(len(v))])
+            print(znormdvectors[0].shape)
             log.debug("Znorm Labels have size %i" % (len(znormlabels)))
             log.debug("Znorm vectors have length %i" %(len(znormdvectors)))
             znormdvectors = np.array(znormdvectors)
