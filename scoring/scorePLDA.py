@@ -4,7 +4,7 @@ import os
 import logging as log
 import sys
 sys.path.insert(0, os.path.realpath(__file__))
-sys.path.insert(0,os.path.dirname(os.path.realpath(__file__)))
+sys.path.insert(0, os.path.dirname(os.path.realpath(__file__)))
 try:
     import htkpython.htkfeature as htkfeature
 except:
@@ -207,7 +207,7 @@ def main():
 
     # Debugging information
     log.debug("Enrol dvectors have dimension (%i,%i) and overall %i labels, whereas %i are unique" % (
-        enroldvectors.shape[0], enroldvectors.shape[1], len(enrollabels),len(np.unique(enrollabels))))
+        enroldvectors.shape[0], enroldvectors.shape[1], len(enrollabels), len(np.unique(enrollabels))))
     log.debug("Background dvectors have dimension (%i,%i)" %
               (bkgdvectors.shape[0], bkgdvectors.shape[1]))
 
@@ -247,12 +247,14 @@ def main():
     if args.znorm:
         log.debug("Running Z-Norm")
         znormdata = checkBinary([args.znorm])
-        znormdvectors, znormlabels = [],[]
+        znormdvectors, znormlabels = [], []
         if znormdata:
             for spk, v in znormdata[0].iteritems():
                 znormdvectors.extend(v)
                 znormlabels.extend([spk for i in xrange(len(v))])
             log.debug("Znorm Labels have size %i" % (len(znormlabels)))
+            znormdvectors = np.array(znormdvectors)
+            znormlabels = np.array(znormlabels)
         else:
             znormdata = parseinputfiletomodels(
                 args.znorm, args.delimiter, args.indices, test=True)
