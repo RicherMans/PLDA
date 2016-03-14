@@ -197,7 +197,7 @@ def main():
         curspk = spktonum[enrolemodel]
         for testutt, targetmdl in vals:
             if testutt not in testtofeature:
-                log.warn("\nUtterance %s not found in the testset" % (testutt))
+                log.warn("Utterance %s not found in the testset" % (testutt))
                 errors += 1
                 continue
             testdvector = testtofeature[testutt][np.newaxis, :]
