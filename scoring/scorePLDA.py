@@ -2,9 +2,10 @@
 import numpy as np
 import os
 import logging as log
+import sys
+sys.path.insert(0, os.path.realpath(__file__))
+sys.path.insert(0,os.path.dirname(os.path.realpath(__file__)))
 try:
-    import sys
-    sys.path.insert(0, os.path.realpath(__file__))
     import htkpython.htkfeature as htkfeature
 except:
     import htkfeature
@@ -22,7 +23,6 @@ except:
         log.error(
             "Could not find liblda! Either install it directly on the machine or copy the library into the folder liblda of this path!")
         raise
-import sys
 import argparse
 from collections import defaultdict
 import marshal
