@@ -250,7 +250,7 @@ def main():
         znormlabels, znormdvectors = [],[]
         if znormdata:
             for spk, v in znormdata[0].iteritems():
-                znormdvectorsg.extend(v)
+                znormdvector.extend(v)
                 znormlabels.extend([spk for i in xrange(len(v))])
             log.debug("Znorm Labels have size %i" % (len(znormlabels)))
         else:
