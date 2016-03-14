@@ -251,8 +251,8 @@ def main():
         if znormdata:
             # Znormdata is a list with only one element
             for spk, v in znormdata[0].iteritems():
-                znormdvectors.append(v)
-                znormlabels.extend([spk for i in xrange(len(v))])
+                znormdvectors.extend(v)
+                znormlabels.append(spk)
             print(znormdvectors[0].shape)
             log.debug("Znorm Labels have size %i" % (len(znormlabels)))
             log.debug("Znorm vectors have length %i" %(len(znormdvectors)))
