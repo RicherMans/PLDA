@@ -164,12 +164,12 @@ def main():
         testdvectors = np.zeros((len(testspktoutt.keys()), datadim))
 
         enrollabels = []
-        bkglabels =  []
+        bkglabels = []
         testlabels = []
         log.info("Parsing the binary input data")
         for i, (spk, v) in enumerate(enrolspktoutt.iteritems()):
             enroldvectors[i] = v
-            enrollabels.append(getspkmodel(spk,args.delimiter,args.indices))
+            enrollabels.append(getspkmodel(spk, args.delimiter, args.indices))
         for i, (spk, v) in enumerate(bkgspktoutt.iteritems()):
             bkgdvectors[i] = v
             bkglabels.append(getspkmodel(spk, args.delimiter, args.indices))
@@ -179,13 +179,15 @@ def main():
 
         enrollabels = np.array(enrollabels)
         bkglabels = np.array(bkglabels)
-        testlabels= np.array(testlabels)
-        log.debug("We have %i enrol, %i background and %i test labels"%(len(enrollabels),len(bkglabels),len(testlabels)))
+        testlabels = np.array(testlabels)
+        log.debug("We have %i enrol, %i background and %i test labels" %
+                  (len(enrollabels), len(bkglabels), len(testlabels)))
     else:
         # Note that I just dont know hot to add these extra parameters ( delim and indices)
         # To the argparser, therefore we just use strings and call the method
         # later
-        log.info("Regular textfile/folder found. Extracting dvectors from here on.")
+        log.info(
+            "Regular textfile/folder found. Extracting dvectors from here on.")
         bkgdata = parseinputfiletomodels(
             args.bkgdata, args.delimiter, None)
         enroldata = parseinputfiletomodels(
@@ -248,7 +250,7 @@ def main():
         znormlabels, znormdvectors = []
         if znormdata:
             for spk, v in znormdata.iteritems():
-                znormdvectors.extend(v)
+                znormdvectorsg.extend(v)
                 znormlabels.extend([spk for i in xrange(len(v))])
             log.debug("Znorm Labels have size %i" % (len(znormlabels)))
         else:
