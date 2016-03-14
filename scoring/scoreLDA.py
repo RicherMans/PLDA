@@ -65,6 +65,7 @@ def drawProgressBar(percent, barLen=20):
     sys.stdout.write("[ %s ] %.2f%%" % (progress, percent))
     sys.stdout.flush()
 
+
 def checkBinary(filenames):
     '''
     Function: checkBinary
@@ -121,6 +122,7 @@ args = parse_args()
 
 extractmethod = methods[args.extractionmethod]
 
+
 def checkmarshalled(marshalfile):
     '''
     Function: checkmarshalled
@@ -144,7 +146,9 @@ def checkCPickle(cpicklefile):
 
 
 def main():
-
+    log.basicConfig(
+        level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
+    lda = LDA(solver='svd')
     # Check if the given data is in marshal format or cPickle
     vectors = checkBinary([args.inputdata, args.testutts])
     if vectors:
@@ -152,9 +156,12 @@ def main():
         datadim = len(inputdata.values()[0])
         dvectors = np.zeros((len(inputdata.keys()), datadim))
         labels = []
+        log.info("Getting dvectors from input data")
         for i, (spk, v) in enumerate(inputdata.iteritems()):
             dvectors[i] = v
             labels.append(getspkmodel(spk, args.delimiter, args.indices))
+        log.debug("Overall we have %i labels and %i dvectors" %
+                  (len(labels), len(dvectors)))
         testtofeature = testutts
 
     else:
@@ -162,9 +169,6 @@ def main():
         inputdata = parseinputfiletomodels(
             args.inputdata, args.delimiter, args.indices)
         testtofeature = parsepaths(readFeats(args.testutts))
-        log.basicConfig(
-            level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
-        lda = LDA(solver='svd')
         labels = []
         dvectors = []
         log.info("Extracting dvectors for input data")
