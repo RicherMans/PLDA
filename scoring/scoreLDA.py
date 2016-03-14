@@ -101,7 +101,7 @@ def parse_args():
     parser.add_argument(
         'inputdata', type=str, help='Input dir or a file specifying all the utterances for enrolment')
     parser.add_argument(
-        'testutts', type=readFeats, help='Input dir or a file specifying the utterances')
+        'testutts', type=str, help='Input dir or a file specifying the utterances')
     parser.add_argument(
         'testmlf', type=mlffile, help='test.mlf file to get the tests. Model and utterance are separated by "-"! ')
     parser.add_argument(
@@ -161,7 +161,7 @@ def main():
         log.info("Given data is either a folder or a filelist")
         inputdata = parseinputfiletomodels(
             args.inputdata, args.delimiter, args.indices)
-        testtofeature = parsepaths(args.testutts)
+        testtofeature = parsepaths(readFeats(args.testutts))
         log.basicConfig(
             level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
         lda = LDA(solver='svd')
