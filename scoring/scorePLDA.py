@@ -249,7 +249,7 @@ def main():
         znormdata = checkBinary([args.znorm])
         znormlabels, znormdvectors = [],[]
         if znormdata:
-            for spk, v in znormdata.iteritems():
+            for spk, v in znormdata[0].iteritems():
                 znormdvectorsg.extend(v)
                 znormlabels.extend([spk for i in xrange(len(v))])
             log.debug("Znorm Labels have size %i" % (len(znormlabels)))
