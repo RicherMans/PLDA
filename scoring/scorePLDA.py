@@ -251,13 +251,13 @@ def main():
         if znormdata:
             # Znormdata is a list with only one element
             for spk, v in znormdata[0].iteritems():
-                znormdvectors.extend(v)
+                znormdvectors.append(v)
                 znormlabels.append(spk)
             print(znormdvectors[0].shape)
-            log.debug("Znorm Labels have size %i" % (len(znormlabels)))
-            log.debug("Znorm vectors have length %i" %(len(znormdvectors)))
             znormdvectors = np.array(znormdvectors)
             znormlabels = np.array(znormlabels)
+            log.debug("Znorm Labels have size %i" % (len(znormlabels)))
+            log.debug("Znorm vectors have dimensions (%i,%i)" %(znormdvectors.shape[0],znormdvectors.shape[1]))
         else:
             znormdata = parseinputfiletomodels(
                 args.znorm, args.delimiter, args.indices, test=True)
