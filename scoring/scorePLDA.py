@@ -180,7 +180,7 @@ def main():
         enrollabels = np.array(enrollabels)
         bkglabels = np.array(bkglabels)
         testlabels = np.array(testlabels)
-        log.debug("We have %i enrol, %i background and %i test labels" %
+        log.debug("We have overall %i enrol, %i background and %i test labels" %
                   (len(enrollabels), len(bkglabels), len(testlabels)))
     else:
         # Note that I just dont know hot to add these extra parameters ( delim and indices)
@@ -206,8 +206,8 @@ def main():
         testdvectors, testlabels = extractvectors(testdata, extractmethod)
 
     # Debugging information
-    log.debug("Enrol dvectors have dimension (%i,%i) and overall %i labels" % (
-        enroldvectors.shape[0], enroldvectors.shape[1], len(enrollabels)))
+    log.debug("Enrol dvectors have dimension (%i,%i) and overall %i labels, whereas %i are unique" % (
+        enroldvectors.shape[0], enroldvectors.shape[1], len(enrollabels),len(np.unique(enrollabels))))
     log.debug("Background dvectors have dimension (%i,%i)" %
               (bkgdvectors.shape[0], bkgdvectors.shape[1]))
 
@@ -247,7 +247,7 @@ def main():
     if args.znorm:
         log.debug("Running Z-Norm")
         znormdata = checkBinary([args.znorm])
-        znormlabels, znormdvectors = []
+        znormlabels, znormdvectors = [],[]
         if znormdata:
             for spk, v in znormdata.iteritems():
                 znormdvectorsg.extend(v)

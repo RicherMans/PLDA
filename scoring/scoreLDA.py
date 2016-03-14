@@ -7,7 +7,9 @@ import os
 import logging as log
 from collections import defaultdict
 import itertools
-import sys
+import marshal
+import cPickle
+from extractdvector import *
 try:
     sys.path.insert(0, os.path.realpath(__file__))
     import htkpython.htkfeature as htkfeature
@@ -31,27 +33,6 @@ except:
         raise
 
 
-def readFeats(value):
-
-    if os.path.isfile(value):
-        return open(value, 'r').read().splitlines()
-    else:
-        return readDir(value)
-
-
-def readDir(input_dir):
-    '''
-    Reads from the given Inputdir recursively down and returns all files in the directories.
-    Be careful since there is not a check if the file is of a specific type!
-    '''
-    foundfiles = []
-    for root, dirs, files in os.walk(input_dir):
-        for f in files:
-            if os.path.isfile(os.path.join(root, f)):
-                foundfiles.append(os.path.abspath(os.path.join(root, f)))
-    return foundfiles
-
-
 def mlffile(f):
     tests = defaultdict(list)
     with open(f, 'r') as mlfpointer:
@@ -69,35 +50,8 @@ def mlffile(f):
                 testutt = "-".join(modeltotestutt[1:])
                 # Get the next line which identifies the target model
                 enrolemodel = next(mlfpointer).rstrip('\n')
-                tests[enrolemodel].append([testutt,targetmdl])
+                tests[enrolemodel].append([testutt, targetmdl])
     return tests
-
-
-def parseinputfiletomodels(filepath, delim, ids, test=False):
-    '''
-    Function: parseinputfiletomodels
-    Summary: Parses the given filepath into a dict of speakers and its uttrances
-    Examples: parseinputfiletomodels('bkg.scp','_',[0,2])
-    Attributes:
-        @param (filepath):Path to the dataset. Dataset consists of absolute files
-        @param (delim):Delimited in how to extract the speaker from the filename
-        @param (ids):After splitting the filename using delim, the indices which parts are taken to be the speaker
-        @param (test):If true, test will result in using the whole utterance name as speaker model
-    Returns: Dict which keys are the speaker and values are a list of utterances
-    '''
-    lines = readFeats(filepath)
-    speakertoutts = defaultdict(list)
-    for line in lines:
-        line = line.rstrip("\n")
-        fname = line.split("/")[-1]
-        fname, ext = os.path.splitext(fname)
-        splits = fname.split(delim)
-        # If we have no test option, we split the filename with the give id's
-        speakerid = delim.join([splits[id] for id in ids])
-        if test:
-            speakerid = delim.join(splits)
-        speakertoutts[speakerid].append(line)
-    return speakertoutts
 
 
 def drawProgressBar(percent, barLen=20):
@@ -112,48 +66,10 @@ def drawProgressBar(percent, barLen=20):
     sys.stdout.flush()
 
 
-def getnormalizedvector(utt):
-    '''
-    Function: getnormalizedvector
-    Summary: Reads in the utterance given as utt and returns a length normalized vector
-    Examples: getnormalizedvector('myfeat.plp')
-    Attributes:
-        @param (utt):Path to the utterance which needs to be read
-    Returns: A numpy array
-    '''
-    feat = np.array(htkfeature.read(utt)[0])
-    denom = np.linalg.norm(feat, axis=1)
-    return feat / denom[:, np.newaxis]
-
-
-def extractdvectormax(utt):
-    # Average over the saples
-    return np.max(getnormalizedvector(utt), axis=0)
-
-
-def extractdvectormean(utt):
-    # Average over the saples
-    return np.mean(getnormalizedvector(utt), axis=0)
-
-
-def extractdvectorvar(utt):
-    # Average over the saples over the feature dim
-    # normalized has dimensions (n_samples,featdim)
-    # We Do not use np.diag(np.cov()), because somehow memory overflows with it
-    return np.var(getnormalizedvector(utt), axis=0)
-
-
-def extractdvectormeanvar(utt):
-    # Just stack the vectors of mean and variance onto each other
-    dvector = np.hstack((extractdvectormean(utt), extractdvectorvar(utt)))
-    # dvector= dvector.reshape(1,dvector.shape[0])
-    return dvector
-
 methods = {
     'mean': extractdvectormean,
     'var': extractdvectorvar,
     'max': extractdvectormax,
-    'meanvar': extractdvectormeanvar
 }
 
 
@@ -183,35 +99,65 @@ args = parse_args()
 
 extractmethod = methods[args.extractionmethod]
 
+def checkmarshalled(marshalfile):
+    '''
+    Function: checkmarshalled
+    Summary: Checks if the given files in a list are marshalled or not by simply opening them.
+    Examples: checkmarshalled(file1)
+    Attributes:
+        @param (files):List of opened files (open('rb'))
+    Returns: A list of the given opened files if sucessful, otherwise none
+    '''
+    try:
+        return marshal.load(marshalfile)
+    except:
+        return
 
-def parsepaths(paths):
-    mdict = {}
-    for path in paths:
-        bname, ext = os.path.splitext(os.path.basename(path))
-        mdict[bname] = extractmethod(path)
-    return mdict
+
+def checkCPickle(cpicklefile):
+    try:
+        return cPickle.load(cpicklefile)
+    except:
+        return
 
 
 def main():
-    inputdata = parseinputfiletomodels(
-        args.inputdata, args.delimiter, args.indices)
-    testtofeature = parsepaths(args.testutts)
-    log.basicConfig(
-        level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
-    lda = LDA(solver='svd')
-    labels = []
-    dvectors = []
-    log.info("Extracting dvectors for input data")
-    for spk, v in inputdata.iteritems():
-        dvectors.extend(itertools.imap(extractmethod, v))
-        labels.extend([spk for i in xrange(len(v))])
+
+    # Check if the given data is in marshal format or cPickle
+    vectors = checkBinary([args.inputdata, args.testutts])
+    if vectors:
+        inputdata, testutts = vectors
+        datadim = len(inputdata.values()[0])
+        dvectors = np.zeros((len(inputdata.keys()), datadim))
+        labels = []
+        for i, (spk, v) in enumerate(inputdata.iteritems()):
+            dvectors[i] = v
+            labels.append(getspkmodel(spk, args.delimiter, args.indices))
+        for i,(spk,v) in enumerate(testutts.iteritems()):
+
+
+    else:
+        log.info("Given data is either a folder or a filelist")
+        inputdata = parseinputfiletomodels(
+            args.inputdata, args.delimiter, args.indices)
+        testtofeature = parsepaths(args.testutts)
+        log.basicConfig(
+            level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
+        lda = LDA(solver='svd')
+        labels = []
+        dvectors = []
+        log.info("Extracting dvectors for input data")
+        for spk, v in inputdata.iteritems():
+            dvectors.extend(itertools.imap(extractmethod, v))
+            labels.extend([spk for i in xrange(len(v))])
     spktonum = {spk: num for num, spk in enumerate(np.unique(labels))}
     dvectors = np.array(dvectors)
     labelsnum = np.array([spktonum[i] for i in labels])
-    log.debug("Overall we have %i labels"%(len(labelsnum)))
-    log.debug("Number of speakers: %i"%(len(spktonum.keys())))
+
+    log.debug("Overall we have %i labels" % (len(labelsnum)))
+    log.debug("Number of speakers: %i" % (len(spktonum.keys())))
     log.debug("Dvector size is (%i,%i)" %
-            (dvectors.shape[0], dvectors.shape[1]))
+              (dvectors.shape[0], dvectors.shape[1]))
 
     log.info("Fitting LDA model")
     lda.fit(dvectors, labelsnum)
