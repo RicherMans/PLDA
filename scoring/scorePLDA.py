@@ -156,7 +156,7 @@ def main():
     vectors = checkBinary([args.bkgdata, args.inputdata, args.testdata])
     if vectors:
         # Get the labels for the speakers
-        enrolspktoutt, bkgspktoutt, testspktoutt = vectors
+        bkgspktoutt,enrolspktoutt, testspktoutt = vectors
 
         datadim = len(enrolspktoutt.values()[0])
         enroldvectors = np.zeros((len(enrolspktoutt.keys()), datadim))
