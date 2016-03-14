@@ -79,7 +79,7 @@ def parse_args():
     parser.add_argument(
         'testmlf', type=mlffile, help='test.mlf file to get the tests. Model and utterance are separated by "-"! E.g. F001-F001_session1_utt1.')
     parser.add_argument(
-        'scoreoutfile', default=sys.stdout, type=argparse.FileType('w',10485760), nargs="?", metavar="STDOUT")
+        'scoreoutfile', default=sys.stdout, type=argparse.FileType('w',50485760), nargs="?", metavar="STDOUT")
     parser.add_argument('-z', '--znorm', type=str,
                         help="Does Z-Norm with the given dataset.Z-Norm generally improves the performance")
     parser.add_argument(

@@ -106,7 +106,7 @@ def parse_args():
     parser.add_argument(
         'testmlf', type=mlffile, help='test.mlf file to get the tests. Model and utterance are separated by "-"! ')
     parser.add_argument(
-        'scoreoutfile', default=sys.stdout, type=argparse.FileType('w',10485760), nargs="?", metavar="STDOUT")
+        'scoreoutfile', default=sys.stdout, type=argparse.FileType('w',50485760), nargs="?", metavar="STDOUT")
     parser.add_argument('-d', '--debug', default=log.INFO, metavar='DEBUGLEVEL',
                         help="Sets the debug level. A level of 10 represents DEBUG. Higher levels are 20 = INFO (default), 30 = WARN", type=int)
     parser.add_argument('-del', '--delimiter', type=str,
