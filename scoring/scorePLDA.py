@@ -163,24 +163,29 @@ def main():
         bkgdvectors = np.zeros((len(bkgspktoutt.keys()), datadim))
         testdvectors = np.zeros((len(testspktoutt.keys()), datadim))
 
-        enrollabels = np.empty(enroldvectors.shape[0], dtype=str)
-        bkglabels = np.empty(bkgdvectors.shape[0], dtype=str)
-        testlabels = np.empty(testdvectors.shape[0], dtype=str)
+        enrollabels = []
+        bkglabels =  []
+        testlabels = []
         log.info("Parsing the binary input data")
         for i, (spk, v) in enumerate(enrolspktoutt.iteritems()):
             enroldvectors[i] = v
-            enrollabels[i] = getspkmodel(spk,args.delim,args.ids)
+            enrollabels.append(getspkmodel(spk,args.delimiter,args.indices))
         for i, (spk, v) in enumerate(bkgspktoutt.iteritems()):
             bkgdvectors[i] = v
-            testlabels[i] = getspkmodel(spk, args.delim, args.ids)
+            bkglabels.append(getspkmodel(spk, args.delimiter, args.indices))
         for i, (spk, v) in enumerate(testspktoutt.iteritems()):
             testdvectors[i] = v
-            testlabels[i] = spk
+            testlabels.append(spk)
 
+        enrollabels = np.array(enrollabels)
+        bkglabels = np.array(bkglabels)
+        testlabels= np.array(testlabels)
+        log.debug("We have %i enrol, %i background and %i test labels"%(len(enrollabels),len(bkglabels),len(testlabels)))
     else:
         # Note that I just dont know hot to add these extra parameters ( delim and indices)
         # To the argparser, therefore we just use strings and call the method
         # later
+        log.info("Regular textfile/folder found. Extracting dvectors from here on.")
         bkgdata = parseinputfiletomodels(
             args.bkgdata, args.delimiter, None)
         enroldata = parseinputfiletomodels(

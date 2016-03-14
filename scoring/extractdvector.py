@@ -75,7 +75,7 @@ def getspkmodel(filename, delim, ids):
     splits = fname.split(delim)
     # If we have no test option, we split the filename with the give id's
     if ids:
-        return delim.join([splits[id] for id in ids])
+        return delim.join([splits[d] for d in ids])
     else:
         return delim.join(splits)
 
