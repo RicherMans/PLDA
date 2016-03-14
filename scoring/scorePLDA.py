@@ -217,6 +217,8 @@ def main():
     enrollabelsenum = np.array([enrolspktonum[i]
                                 for i in enrollabels], dtype='uint')
 
+    log.debug("Model labels are "+", ".join(enrolspktonum.keys()))
+
     bkgspktonum = {spk: num for num, spk in enumerate(np.unique(bkglabels))}
     bkglabelsenum = np.array([bkgspktonum[i] for i in bkglabels], dtype='uint')
 
@@ -253,7 +255,6 @@ def main():
             for spk, v in znormdata[0].iteritems():
                 znormdvectors.append(v)
                 znormlabels.append(spk)
-            print(znormdvectors[0].shape)
             znormdvectors = np.array(znormdvectors)
             znormlabels = np.array(znormlabels)
             log.debug("Znorm Labels have size %i" % (len(znormlabels)))
