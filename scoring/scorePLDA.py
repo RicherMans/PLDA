@@ -253,7 +253,7 @@ def main():
                 znormdvectors.extend(v)
                 znormlabels.extend([spk for i in xrange(len(v))])
             log.debug("Znorm Labels have size %i" % (len(znormlabels)))
-            log.debug("Znorm vectors have size (%i,%i)"%(len(znormdvectors),znormdvectors[0].shape[0]))
+            log.debug("Znorm vectors have length %i" %(len(znormdvectors)))
             znormdvectors = np.array(znormdvectors)
             znormlabels = np.array(znormlabels)
         else:
