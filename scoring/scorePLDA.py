@@ -286,7 +286,7 @@ def main():
             score = plda.score(enrolspk, enroltransform[
                                enrolspk], testtransform[testspktonum[testutt]])
             args.scoreoutfile.write(
-                "{} {}-{} {:.3f}\n".format(targetmdl, enrolemodel, testutt, score))
+                "{} {}-{} {:.3f}\n".format(enrolemodel, targetmdl, testutt, score))
     if errors > 0:
         log.warn(
             "Overall %i errors occured during the testing phase!" % (errors))

@@ -204,7 +204,7 @@ def main():
             score = lda.predict_log_proba(testdvector)[0]
             finalscore = score[curspk]
             args.scoreoutfile.write(
-                "{} {}-{} {:.3f}\n".format(targetmdl, enrolemodel, testutt, finalscore))
+                "{} {}-{} {:.3f}\n".format(enrolemodel, targetmdl, testutt, finalscore))
     if errors > 0:
         log.warn(
             "Overall %i happened while processing the testutterances. The scores may not be complete" % (errors))
