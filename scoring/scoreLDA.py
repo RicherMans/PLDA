@@ -133,8 +133,7 @@ def main():
         for i, (spk, v) in enumerate(inputdata.iteritems()):
             dvectors[i] = v
             labels.append(getspkmodel(spk, args.delimiter, args.indices))
-        for i,(spk,v) in enumerate(testutts.iteritems()):
-
+        testtofeature = testutts
 
     else:
         log.info("Given data is either a folder or a filelist")
