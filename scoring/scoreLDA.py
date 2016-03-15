@@ -196,7 +196,7 @@ def main():
             dvectors[i] = v
             labels.append(getspkmodel(spk, args.delimiter, args.indices))
         log.debug("Data which was loaded in (%s) has %i labels and %i dvectors" %
-                  args.inputdata, (len(labels), len(dvectors)))
+                  (args.inputdata, len(labels), len(dvectors)))
         testtofeature = testutts
 
     else:
