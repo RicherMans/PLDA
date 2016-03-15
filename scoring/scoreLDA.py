@@ -120,6 +120,8 @@ def parse_args():
     )
     return parser.parse_args()
 args = parse_args()
+log.basicConfig(
+        level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
 
 extractmethod = methods[args.extractionmethod]
 
@@ -155,8 +157,6 @@ def parsepaths(paths):
 
 
 def main():
-    log.basicConfig(
-        level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
     lda = LDA(solver='svd')
     # Check if the given data is in marshal format or cPickle
     if args.binary:
