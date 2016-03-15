@@ -45,8 +45,9 @@ def test_ref(f):
             targetmodel, enrol_testutt, target = line.split()
             modeltotestutt = enrol_testutt.split("-")
             enrolemdl = modeltotestutt[0]
-            testutt= '-'.join(modeltotestutt[1:])
+            testutt = '-'.join(modeltotestutt[1:])
             tests[targetmdl].append([testutt, enrolemdl])
+    return tests
 
 # Parses Mlf file
 
@@ -106,7 +107,8 @@ def parse_args():
                         help="Smoothing factor during the PLDA transformation. default %(default)s", default=1.0)
     parser.add_argument(
         '-b', '--binary', help="Specify if the given input is binary ( either marshalled or cPickle)", action='store_true', default=False)
-    parser.add_argument('-mlf',help='Uses mlf file as the label file',action="store_true",default=False)
+    parser.add_argument(
+        '-mlf', help='Uses mlf file as the label file', action="store_true", default=False)
     parser.add_argument(
         '--iters', type=int, help="Number of iterations for the PLDA estimation, default is %(default)s", default=10)
     parser.add_argument(
@@ -170,10 +172,11 @@ def main():
     # Will be filled as defaultdict(list)
     testreference = None
     if args.mlf:
-        log.info("Parsing input label file %s as mlf file")
+        log.info("Parsing input label file %s as mlf file"%(args.testref))
         testreference = mlffile(args.testref)
     else:
-        log.info("Parsing input label file %s as test_ref file( TARGETMDL ENROLEMODEL-TESTUTT LABEL )")
+        log.info(
+            "Parsing input label file %s as test_ref file( TARGETMDL ENROLEMODEL-TESTUTT LABEL )"%(args.testref))
         testreference = test_ref(args.testref)
 
     # Check if the given data is in marshal format or cPickle

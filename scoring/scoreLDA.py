@@ -89,6 +89,19 @@ def checkBinary(filenames):
             ret.append(curret)
     return ret
 
+
+def test_ref(f):
+    tests = defaultdict(list)
+    with open(f, 'r') as testpointer:
+        for line in testpointer:
+            line = line.rstrip('\n')
+            targetmodel, enrol_testutt = line.split()[:2]
+            modeltotestutt = enrol_testutt.split("-")
+            enrolemdl = modeltotestutt[0]
+            testutt = '-'.join(modeltotestutt[1:])
+            tests[targetmodel].append([testutt, enrolemdl])
+    return tests
+
 methods = {
     'mean': extractdvectormean,
     'var': extractdvectorvar,
@@ -104,7 +117,7 @@ def parse_args():
     parser.add_argument(
         'testutts', type=str, help='Input dir or a file specifying the utterances')
     parser.add_argument(
-        'testmlf', type=mlffile, help='test.mlf file to get the tests. Model and utterance are separated by "-"! ')
+        'testref', type=str, help='test.mlf/test_ref file to get the tests. Model and utterance are separated by "-"! ')
     parser.add_argument(
         'scoreoutfile', default=sys.stdout, type=argparse.FileType('w', 50485760), nargs="?", metavar="STDOUT")
     parser.add_argument('-d', '--debug', default=log.INFO, metavar='DEBUGLEVEL',
@@ -112,7 +125,10 @@ def parse_args():
     parser.add_argument('-del', '--delimiter', type=str,
                         help='If we extract the features from the given data, we use the delimiter (default : %(default)s) to obtain the splits.',
                         default="_")
-    parser.add_argument('-b','--binary',help="Specify if the given input is binary ( either marshalled or cPickle)",action='store_true',default=False)
+    parser.add_argument(
+        '-mlf', help='Uses mlf file as the label file', action="store_true", default=False)
+    parser.add_argument(
+        '-b', '--binary', help="Specify if the given input is binary ( either marshalled or cPickle)", action='store_true', default=False)
     parser.add_argument(
         '-id', '--indices', help="The indices of the given splits which are used to determinate the speaker labels! default is rsr %(default)s", nargs="+", type=int, default=[0, 2])
     parser.add_argument(
@@ -121,7 +137,7 @@ def parse_args():
     return parser.parse_args()
 args = parse_args()
 log.basicConfig(
-        level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
+    level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
 
 extractmethod = methods[args.extractionmethod]
 
@@ -158,6 +174,16 @@ def parsepaths(paths):
 
 def main():
     lda = LDA(solver='svd')
+
+    # Will be filled as dict
+    testreferences = None
+    if args.mlf:
+        log.info("Parsing input label file %s as mlf file" % (args.testref))
+        testreferences = mlffile(args.testref)
+    else:
+        log.info(
+            "Parsing input label file %s as test_ref file( TARGETMDL ENROLEMODEL-TESTUTT LABEL )" % (args.testref))
+        testreferences = test_ref(args.testref)
     # Check if the given data is in marshal format or cPickle
     if args.binary:
         log.info("Try to read input as a binary file")
@@ -170,7 +196,7 @@ def main():
             dvectors[i] = v
             labels.append(getspkmodel(spk, args.delimiter, args.indices))
         log.debug("Data which was loaded in (%s) has %i labels and %i dvectors" %
-                  args.inputdata,(len(labels), len(dvectors)))
+                  args.inputdata, (len(labels), len(dvectors)))
         testtofeature = testutts
 
     else:
@@ -198,7 +224,7 @@ def main():
 
     errors = 0
     log.info("Starting test")
-    for enrolemodel, vals in args.testmlf.iteritems():
+    for enrolemodel, vals in testreferences.iteritems():
         if enrolemodel not in spktonum:
             errors += 1
             log.warn("Enrolemodel %s not found in the labels" % (enrolemodel))
@@ -212,7 +238,8 @@ def main():
             # LDA currently needs a twodimensional imput vector
             testdvector = testtofeature[testutt][np.newaxis, :]
             score = lda.predict_log_proba(testdvector)[0]
-            # score is a list of all the scores ( not only one ). we need to find the current speakers score
+            # score is a list of all the scores ( not only one ). we need to
+            # find the current speakers score
             finalscore = score[curspk]
             args.scoreoutfile.write(
                 "{} {}-{} {:.3f}\n".format(enrolemodel, targetmdl, testutt, finalscore))
