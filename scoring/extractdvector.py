@@ -48,6 +48,18 @@ def extractdvectorvar(utt):
     return np.var(getnormalizedvector(utt), axis=0)
 
 
+def extractdvectormean_nol2(utt):
+    return np.mean(np.array(utt)[:, np.newaxis], axis=0)
+
+
+def extractdvectorvar_nol2(utt):
+    return np.var(np.array(utt)[:, np.newaxis], axis=0)
+
+
+def extractdvectormax_nol2(utt):
+    return np.max(np.array(utt)[:, np.newaxis], axis=0)
+
+
 def readDir(input_dir):
     '''
     Reads from the given Inputdir recursively down and returns all files in the directories.
@@ -105,6 +117,12 @@ methods = {
     'var': extractdvectorvar
 }
 
+nol2method = {
+    'mean': extractdvectormean_nol2,
+    'max': extractdvectormax_nol2,
+    'var': extractdvectorvar_nol2
+}
+
 
 def parse_args():
     parser = argparse.ArgumentParser(
@@ -119,6 +137,8 @@ def parse_args():
     parser.add_argument('-del', '--delimiter', type=str,
                         help='If we extract the features from the given data, we use the delimiter (default : %(default)s) to obtain the splits.',
                         default="_")
+    parser.add_argument(
+        '--nol2norm', help="Disables L2 Norm", default=False, action="store_true")
     parser.add_argument('-d', '--debug', help="Sets the debug level. A value of 10 represents debug. The lower the value, the more output. Default is INFO",
                         type=int, default=log.INFO)
     return parser.parse_args()
@@ -153,6 +173,8 @@ def main():
         args.inputdata, args.delimiter, ids=None)
     log.info("Input data consists of %i speakers." % (len(inputdata.keys())))
     extractmethod = methods[args.extractionmethod]
+    if args.nol2norm:
+        extractmethod=nol2method[args.extractionmethod]
     log.info(
         "Extracting dvectors [%s] for the input data" % (args.extractionmethod))
     dvectors = extractspktovectors(inputdata, extractmethod)

@@ -125,6 +125,7 @@ def parse_args():
     parser.add_argument('-del', '--delimiter', type=str,
                         help='If we extract the features from the given data, we use the delimiter (default : %(default)s) to obtain the splits.',
                         default="_")
+    parser.add_argument('--l2norm',help="Does L2 Normalization for input vector, default is off",action="store_true",default=False)
     parser.add_argument(
         '-mlf', help='Uses mlf file as the label file', action="store_true", default=False)
     parser.add_argument(
