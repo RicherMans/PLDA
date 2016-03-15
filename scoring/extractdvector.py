@@ -49,15 +49,15 @@ def extractdvectorvar(utt):
 
 
 def extractdvectormean_nol2(utt):
-    return np.mean(np.array(utt)[:, np.newaxis], axis=0)
+    return np.mean(np.array(htkfeature.read(utt)[0])[:, np.newaxis], axis=0)
 
 
 def extractdvectorvar_nol2(utt):
-    return np.var(np.array(utt)[:, np.newaxis], axis=0)
+    return np.var(np.array(htkfeature.read(utt)[0])[:, np.newaxis], axis=0)
 
 
 def extractdvectormax_nol2(utt):
-    return np.max(np.array(utt)[:, np.newaxis], axis=0)
+    return np.max(np.array(htkfeature.read(utt)[0])[:, np.newaxis], axis=0)
 
 
 def readDir(input_dir):
