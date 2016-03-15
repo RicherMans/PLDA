@@ -36,6 +36,18 @@ def float_zeroone(value):
         raise argparse.ArgumentTypeError('Value has to be between 0 and 1')
     return float_repr
 
+
+def test_ref(f):
+    tests = defaultdict(list)
+    with open(f, 'r') as testpointer:
+        for line in testpointer:
+            line = line.rstrip('\n')
+            targetmodel, enrol_testutt, target = line.split()
+            modeltotestutt = enrol_testutt.split("-")
+            enrolemdl = modeltotestutt[0]
+            testutt= '-'.join(modeltotestutt[1:])
+            tests[targetmdl].append([testutt, enrolemdl])
+
 # Parses Mlf file
 
 
@@ -51,12 +63,12 @@ def mlffile(f):
                 withoutslashes = withoutlab.split("/")[1]
                 # Split the model and utt
                 modeltotestutt = withoutslashes.split("-")
-                targetmdl = modeltotestutt[0]
+                enrolemdl = modeltotestutt[0]
                 # In the case that there is some utterance having another -
                 testutt = "-".join(modeltotestutt[1:])
                 # Get the next line which identifies the target model
-                enrolemodel = next(mlfpointer).rstrip('\n')
-                tests[enrolemodel].append([testutt, targetmdl])
+                targetmdl = next(mlfpointer).rstrip('\n')
+                tests[targetmdl].append([testutt, enrolemdl])
     return tests
 
 # Imported from dvector
@@ -77,7 +89,7 @@ def parse_args():
     parser.add_argument(
         'testdata', type=str, help='Input dir or a file specifying the test utterances')
     parser.add_argument(
-        'testmlf', type=mlffile, help='test.mlf file to get the tests. Model and utterance are separated by "-"! E.g. F001-F001_session1_utt1.')
+        'testref', type=str, help='test.mlf file to get the tests. Model and utterance are separated by "-"! E.g. F001-F001_session1_utt1.')
     parser.add_argument(
         'scoreoutfile', default=sys.stdout, type=argparse.FileType('w', 50485760), nargs="?", metavar="STDOUT")
     parser.add_argument('-z', '--znorm', type=str,
@@ -92,7 +104,9 @@ def parse_args():
                         default="_")
     parser.add_argument('--smoothing', type=float_zeroone,
                         help="Smoothing factor during the PLDA transformation. default %(default)s", default=1.0)
-    parser.add_argument('-b','--binary',help="Specify if the given input is binary ( either marshalled or cPickle)",action='store_true',default=False)
+    parser.add_argument(
+        '-b', '--binary', help="Specify if the given input is binary ( either marshalled or cPickle)", action='store_true', default=False)
+    parser.add_argument('-mlf',help='Uses mlf file as the label file',action="store_true",default=False)
     parser.add_argument(
         '--iters', type=int, help="Number of iterations for the PLDA estimation, default is %(default)s", default=10)
     parser.add_argument(
@@ -153,11 +167,21 @@ def main():
     log.basicConfig(
         level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
 
+    # Will be filled as defaultdict(list)
+    testreference = None
+    if args.mlf:
+        log.info("Parsing input label file %s as mlf file")
+        testreference = mlffile(args.testref)
+    else:
+        log.info("Parsing input label file %s as test_ref file( TARGETMDL ENROLEMODEL-TESTUTT LABEL )")
+        testreference = test_ref(args.testref)
+
     # Check if the given data is in marshal format or cPickle
     if args.binary:
         log.info("Try to read input as a binary file")
         # Get the labels for the speakers
-        bkgspktoutt, enrolspktoutt, testspktoutt = checkBinary([args.bkgdata, args.inputdata, args.testdata])
+        bkgspktoutt, enrolspktoutt, testspktoutt = checkBinary(
+            [args.bkgdata, args.inputdata, args.testdata])
 
         datadim = len(enrolspktoutt.values()[0])
         enroldvectors = np.zeros((len(enrolspktoutt.keys()), datadim))
@@ -272,7 +296,7 @@ def main():
 
     errors = 0
     log.info("Beginning scoring")
-    for enrolemodel, vals in args.testmlf.iteritems():
+    for enrolemodel, vals in testreference.iteritems():
         if enrolemodel not in enrolspktonum:
             errors += 1
             log.warn("Enrolemodel %s not found in the labels" % (enrolemodel))
