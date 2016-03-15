@@ -181,7 +181,7 @@ def main():
         enrollabels = np.array(enrollabels)
         bkglabels = np.array(bkglabels)
         testlabels = np.array(testlabels)
-        log.debug("We have overall %i enrol, %i background and %i test labels" %
+        log.debug("Data which was loaded in has overall %i enrol, %i background and %i test labels" %
                   (len(enrollabels), len(bkglabels), len(testlabels)))
     else:
         # Note that I just dont know hot to add these extra parameters ( delim and indices)

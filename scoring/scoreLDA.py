@@ -169,8 +169,8 @@ def main():
         for i, (spk, v) in enumerate(inputdata.iteritems()):
             dvectors[i] = v
             labels.append(getspkmodel(spk, args.delimiter, args.indices))
-        log.debug("Overall we have %i labels and %i dvectors" %
-                  (len(labels), len(dvectors)))
+        log.debug("Data which was loaded in (%s) has %i labels and %i dvectors" %
+                  args.inputdata,(len(labels), len(dvectors)))
         testtofeature = testutts
 
     else:
@@ -209,8 +209,10 @@ def main():
                 log.warn("Utterance %s not found in the testset" % (testutt))
                 errors += 1
                 continue
+            # LDA currently needs a twodimensional imput vector
             testdvector = testtofeature[testutt][np.newaxis, :]
             score = lda.predict_log_proba(testdvector)[0]
+            # score is a list of all the scores ( not only one ). we need to find the current speakers score
             finalscore = score[curspk]
             args.scoreoutfile.write(
                 "{} {}-{} {:.3f}\n".format(enrolemodel, targetmdl, testutt, finalscore))
