@@ -76,17 +76,9 @@ def checkBinary(filenames):
     Returns: Tuple of bkg,enrol,test data if they exist
     '''
     ret = []
-    textchars = bytearray(
-        {7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7f})
-    is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
     for filename in filenames:
         with open(filename, 'rb') as f:
             log.debug("Check if file %s is in CPickle Format" % (filename))
-            # Check if the given file is a binary file, if not then just skip
-            # it
-            if not is_binary_string(f.read(1024)):
-                return
-
             curret = checkCPickle(f)
             if not curret:
                 log.debug("Checking if file %s is in Marshal Format" %
@@ -120,6 +112,7 @@ def parse_args():
     parser.add_argument('-del', '--delimiter', type=str,
                         help='If we extract the features from the given data, we use the delimiter (default : %(default)s) to obtain the splits.',
                         default="_")
+    parser.add_argument('-b','--binary',help="Specify if the given input is binary ( either marshalled or cPickle)",action='store_true',default=False)
     parser.add_argument(
         '-id', '--indices', help="The indices of the given splits which are used to determinate the speaker labels! default is rsr %(default)s", nargs="+", type=int, default=[0, 2])
     parser.add_argument(
@@ -166,9 +159,9 @@ def main():
         level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
     lda = LDA(solver='svd')
     # Check if the given data is in marshal format or cPickle
-    vectors = checkBinary([args.inputdata, args.testutts])
-    if vectors:
-        inputdata, testutts = vectors
+    if args.binary:
+        log.info("Try to read input as a binary file")
+        inputdata, testutts = checkBinary([args.inputdata, args.testutts])
         datadim = len(inputdata.values()[0])
         dvectors = np.zeros((len(inputdata.keys()), datadim))
         labels = []
@@ -181,7 +174,7 @@ def main():
         testtofeature = testutts
 
     else:
-        log.info("Given data is either a folder or a filelist")
+        log.info("Given data is either a folder or a filelist. Trying to read")
         inputdata = parseinputfiletomodels(
             args.inputdata, args.delimiter, args.indices)
         testtofeature = parsepaths(readFeats(args.testutts))

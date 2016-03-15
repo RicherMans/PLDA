@@ -92,6 +92,7 @@ def parse_args():
                         default="_")
     parser.add_argument('--smoothing', type=float_zeroone,
                         help="Smoothing factor during the PLDA transformation. default %(default)s", default=1.0)
+    parser.add_argument('-b','--binary',help="Specify if the given input is binary ( either marshalled or cPickle)",action='store_true',default=False)
     parser.add_argument(
         '--iters', type=int, help="Number of iterations for the PLDA estimation, default is %(default)s", default=10)
     parser.add_argument(
@@ -133,16 +134,9 @@ def checkBinary(filenames):
     Returns: Tuple of bkg,enrol,test data if they exist
     '''
     ret = []
-    textchars = bytearray(
-        {7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7f})
-    is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
     for filename in filenames:
         with open(filename, 'rb') as f:
             log.debug("Check if file %s is in CPickle Format" % (filename))
-            # Check if the given file is a binary file, if not then just skip
-            # it
-            if not is_binary_string(f.read(1024)):
-                return
             curret = checkCPickle(f)
             if not curret:
                 log.debug("Checking if file %s is in Marshal Format" %
@@ -160,10 +154,10 @@ def main():
         level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
 
     # Check if the given data is in marshal format or cPickle
-    vectors = checkBinary([args.bkgdata, args.inputdata, args.testdata])
-    if vectors:
+    if args.binary:
+        log.info("Try to read input as a binary file")
         # Get the labels for the speakers
-        bkgspktoutt, enrolspktoutt, testspktoutt = vectors
+        bkgspktoutt, enrolspktoutt, testspktoutt = checkBinary([args.bkgdata, args.inputdata, args.testdata])
 
         datadim = len(enrolspktoutt.values()[0])
         enroldvectors = np.zeros((len(enrolspktoutt.keys()), datadim))
