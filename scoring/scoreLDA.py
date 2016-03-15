@@ -76,14 +76,16 @@ def checkBinary(filenames):
     Returns: Tuple of bkg,enrol,test data if they exist
     '''
     ret = []
-    textchars = bytearray({7,8,9,10,12,13,27} | set(range(0x20, 0x100)) - {0x7f})
+    textchars = bytearray(
+        {7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7f})
     is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
     for filename in filenames:
         with open(filename, 'rb') as f:
             log.debug("Check if file %s is in CPickle Format" % (filename))
-            # Check if the given file is a binary file, if not then just skip it
+            # Check if the given file is a binary file, if not then just skip
+            # it
             if not is_binary_string(f.read(1024)):
-                 return
+                return
 
             curret = checkCPickle(f)
             if not curret:
@@ -112,7 +114,7 @@ def parse_args():
     parser.add_argument(
         'testmlf', type=mlffile, help='test.mlf file to get the tests. Model and utterance are separated by "-"! ')
     parser.add_argument(
-        'scoreoutfile', default=sys.stdout, type=argparse.FileType('w',50485760), nargs="?", metavar="STDOUT")
+        'scoreoutfile', default=sys.stdout, type=argparse.FileType('w', 50485760), nargs="?", metavar="STDOUT")
     parser.add_argument('-d', '--debug', default=log.INFO, metavar='DEBUGLEVEL',
                         help="Sets the debug level. A level of 10 represents DEBUG. Higher levels are 20 = INFO (default), 30 = WARN", type=int)
     parser.add_argument('-del', '--delimiter', type=str,
@@ -157,6 +159,7 @@ def parsepaths(paths):
         bname, ext = os.path.splitext(os.path.basename(path))
         mdict[bname] = extractmethod(path)
     return mdict
+
 
 def main():
     log.basicConfig(

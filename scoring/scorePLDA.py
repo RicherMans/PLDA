@@ -79,7 +79,7 @@ def parse_args():
     parser.add_argument(
         'testmlf', type=mlffile, help='test.mlf file to get the tests. Model and utterance are separated by "-"! E.g. F001-F001_session1_utt1.')
     parser.add_argument(
-        'scoreoutfile', default=sys.stdout, type=argparse.FileType('w',50485760), nargs="?", metavar="STDOUT")
+        'scoreoutfile', default=sys.stdout, type=argparse.FileType('w', 50485760), nargs="?", metavar="STDOUT")
     parser.add_argument('-z', '--znorm', type=str,
                         help="Does Z-Norm with the given dataset.Z-Norm generally improves the performance")
     parser.add_argument(
@@ -133,9 +133,16 @@ def checkBinary(filenames):
     Returns: Tuple of bkg,enrol,test data if they exist
     '''
     ret = []
+    textchars = bytearray(
+        {7, 8, 9, 10, 12, 13, 27} | set(range(0x20, 0x100)) - {0x7f})
+    is_binary_string = lambda bytes: bool(bytes.translate(None, textchars))
     for filename in filenames:
         with open(filename, 'rb') as f:
             log.debug("Check if file %s is in CPickle Format" % (filename))
+            # Check if the given file is a binary file, if not then just skip
+            # it
+            if not is_binary_string(f.read(1024)):
+                return
             curret = checkCPickle(f)
             if not curret:
                 log.debug("Checking if file %s is in Marshal Format" %
@@ -156,7 +163,7 @@ def main():
     vectors = checkBinary([args.bkgdata, args.inputdata, args.testdata])
     if vectors:
         # Get the labels for the speakers
-        bkgspktoutt,enrolspktoutt, testspktoutt = vectors
+        bkgspktoutt, enrolspktoutt, testspktoutt = vectors
 
         datadim = len(enrolspktoutt.values()[0])
         enroldvectors = np.zeros((len(enrolspktoutt.keys()), datadim))
@@ -217,7 +224,7 @@ def main():
     enrollabelsenum = np.array([enrolspktonum[i]
                                 for i in enrollabels], dtype='uint')
 
-    log.debug("Model labels are "+", ".join(enrolspktonum.keys()))
+    log.debug("Model labels are " + ", ".join(enrolspktonum.keys()))
 
     bkgspktonum = {spk: num for num, spk in enumerate(np.unique(bkglabels))}
     bkglabelsenum = np.array([bkgspktonum[i] for i in bkglabels], dtype='uint')
@@ -258,7 +265,8 @@ def main():
             znormdvectors = np.array(znormdvectors)
             znormlabels = np.array(znormlabels)
             log.debug("Znorm Labels have size %i" % (len(znormlabels)))
-            log.debug("Znorm vectors have dimensions (%i,%i)" %(znormdvectors.shape[0],znormdvectors.shape[1]))
+            log.debug("Znorm vectors have dimensions (%i,%i)" %
+                      (znormdvectors.shape[0], znormdvectors.shape[1]))
         else:
             znormdata = parseinputfiletomodels(
                 args.znorm, args.delimiter, args.indices, test=True)
