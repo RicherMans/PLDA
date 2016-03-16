@@ -42,7 +42,7 @@ def test_ref(f):
     with open(f, 'r') as testpointer:
         for line in testpointer:
             line = line.rstrip('\n')
-            targetmodel, enrol_testutt, target = line.split()
+            targetmdl, enrol_testutt = line.split()[:2]
             modeltotestutt = enrol_testutt.split("-")
             enrolemdl = modeltotestutt[0]
             testutt = '-'.join(modeltotestutt[1:])
@@ -96,7 +96,7 @@ def parse_args():
     parser.add_argument('-z', '--znorm', type=str,
                         help="Does Z-Norm with the given dataset.Z-Norm generally improves the performance")
     parser.add_argument(
-        '--zutt', help="Number of znorm utterances, default is all the bkg size", type=int)
+        '--zutt', help="Number of znorm utterances, default is all the bkg size %(default)s", type=int,default=0)
     parser.add_argument(
         '-e', '--extractionmethod', choices=methods, default='mean', help='The method which should be used to extract dvectors'
     )
