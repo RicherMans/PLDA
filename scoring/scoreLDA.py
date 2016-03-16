@@ -137,8 +137,6 @@ def parse_args():
     )
     return parser.parse_args()
 args = parse_args()
-log.basicConfig(
-    level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
 
 extractmethod = methods[args.extractionmethod]
 
@@ -175,6 +173,8 @@ def parsepaths(paths):
 
 def main():
     lda = LDA(solver='svd')
+    log.basicConfig(
+        level=args.debug, format='%(asctime)s %(levelname)s %(message)s', datefmt='%d/%m %H:%M:%S')
 
     # Will be filled as dict
     testreferences = None
