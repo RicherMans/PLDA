@@ -157,8 +157,7 @@ def extractvectors(datadict, extractmethod):
 
 def extractspktovectors(datadict, extractmethod):
     for spk, v in datadict.iteritems():
-        datadict[spk] = np.fromiter(
-            list(itertools.imap(extractmethod, v))[0], np.float64)
+        datadict[spk] = np.array(list(itertools.imap(extractmethod,v))[0],dtype=np.float64)
 
     return datadict
 
