@@ -16,19 +16,17 @@ import itertools
 from cPickle import dump
 
 
-def getnormalizedvector(utt):
+def getnormalizedvector(uttvec):
     '''
     Function: getnormalizedvector
-    Summary: Reads in the utterance given as utt and returns a length normalized vector
+    Summary: returns a length normalized vector given the vector utt
     Examples: getnormalizedvector('myfeat.plp')
     Attributes:
-        @param (utt):Path to the utterance which needs to be read
+        @param (uttvec):the vector extracted from an utterance
     Returns: A numpy array
     '''
-    feat = np.array(htkfeature.read(utt)[0])
-
-    denom = np.linalg.norm(feat, axis=1)
-    return feat / denom[:, np.newaxis]
+    denom = np.linalg.norm(np.array(uttvec), axis=1)
+    return uttvec / denom[:, np.newaxis]
 
 
 def extractdvectormax(utt):
@@ -48,16 +46,16 @@ def extractdvectorvar(utt):
     return np.var(getnormalizedvector(utt), axis=0)
 
 
-def extractdvectormean_nol2(utt):
-    return np.mean(np.array(htkfeature.read(utt)[0])[:, np.newaxis], axis=0)
+def extractdvectormean_nol2(uttvec):
+    return np.mean(np.array(uttvec)[:, np.newaxis], axis=0)
 
 
-def extractdvectorvar_nol2(utt):
-    return np.var(np.array(htkfeature.read(utt)[0])[:, np.newaxis], axis=0)
+def extractdvectorvar_nol2(uttvec):
+    return np.var(np.array(uttvec)[:, np.newaxis], axis=0)
 
 
-def extractdvectormax_nol2(utt):
-    return np.max(np.array(htkfeature.read(utt)[0])[:, np.newaxis], axis=0)
+def extractdvectormax_nol2(uttvec):
+    return np.max(np.array(uttvec)[:, np.newaxis], axis=0)
 
 
 def readDir(input_dir):
@@ -111,6 +109,15 @@ def parseinputfiletomodels(filepath, delim, ids):
         speakertoutts[speakerid].append(line)
     return speakertoutts
 
+
+def readnp(inputpath):
+    return np.load(inputpath)
+
+
+def readhtk(inputpath):
+    return htkfeature.read(inputpath)[0]
+
+
 methods = {
     'mean': extractdvectormean,
     'max': extractdvectormax,
@@ -121,6 +128,11 @@ nol2method = {
     'mean': extractdvectormean_nol2,
     'max': extractdvectormax_nol2,
     'var': extractdvectorvar_nol2
+}
+
+filetypes = {
+    "numpy": readnp,
+    "htk": readhtk
 }
 
 
@@ -134,6 +146,7 @@ def parse_args():
     parser.add_argument(
         '-e', '--extractionmethod', choices=methods, default='mean', help='The method which should be used to extract dvectors'
     )
+    parser.add_argument('-type', choices=filetypes.keys(),default='htk',help="The type of the input files (default is htk)")
     parser.add_argument('-del', '--delimiter', type=str,
                         help='If we extract the features from the given data, we use the delimiter (default : %(default)s) to obtain the splits.',
                         default="_")
@@ -155,8 +168,10 @@ def extractvectors(datadict, extractmethod):
     return np.array(dvectors), np.array(labels)
 
 
-def extractspktovectors(datadict, extractmethod):
+def extractspktovectors(datadict, extractmethod, readfeatmethod):
     for spk, v in datadict.iteritems():
+        # First read in the feature
+        feat = readfeatmethod(v)
         datadict[spk] = np.array(list(itertools.imap(extractmethod,v))[0],dtype=np.float64)
 
     return datadict
@@ -173,10 +188,11 @@ def main():
     log.info("Input data consists of %i speakers." % (len(inputdata.keys())))
     extractmethod = methods[args.extractionmethod]
     if args.nol2norm:
-        extractmethod=nol2method[args.extractionmethod]
+        extractmethod = nol2method[args.extractionmethod]
+    feature_ftype = filetypes[args.type]
     log.info(
         "Extracting dvectors [%s] for the input data" % (args.extractionmethod))
-    dvectors = extractspktovectors(inputdata, extractmethod)
+    dvectors = extractspktovectors(inputdata, extractmethod, feature_ftype)
     # Dvectors is a dict with "utt":[dvector] elements
     dump(dict(dvectors), args.outputdvectors)
 
