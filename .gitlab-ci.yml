@@ -1,0 +1,26 @@
+before_script:
+  - sudo apt-get install -y cmake
+  - pip install -r pip_install.txt
+
+
+types:
+  - build
+
+
+testhtktools:
+  type: build
+  tags:
+    - python2
+  script:
+    - mkdir build
+    - cd build
+    - cmake -DCMAKE_BUILD_TYPE=DEBUG ../
+    - make -j2
+
+
+test_app:
+  type: test
+  tags:
+    - python2
+  script:
+    - python python/test.py
