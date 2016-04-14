@@ -1,6 +1,6 @@
 image: ubuntu
 before_script:
-  - apt-get update && apt-get upgrade && apt-get install -y cmake python-pip
+  - apt-get update && apt-get upgrade && apt-get install -y cmake python2.7 python-dev python-pip
   - pip install -r pip_install.txt
 
 
