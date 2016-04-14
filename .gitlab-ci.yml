@@ -10,7 +10,6 @@ stages:
 build_app:
   stage: build
   tags:
-    - python2
     - ubuntu
   script:
     - mkdir build
@@ -22,7 +21,6 @@ build_app:
 test_app:
   stage: test
   tags:
-    - python2
     - ubuntu
   script:
     - python python/test.py
