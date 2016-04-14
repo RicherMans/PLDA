@@ -48,4 +48,4 @@ class PLDA(object):
             @param (yvec):The test vector
         Returns: A score ( float)
         '''
-        return self._instance.score(target, x, y)
+        return self._instance.score(target, xvec, yvec)
