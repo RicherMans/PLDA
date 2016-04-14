@@ -1,4 +1,7 @@
 before_script:
+  image:
+    - ubuntu
+  - apt-get install -y cmake
   - pip install -r pip_install.txt
 
 
@@ -10,6 +13,7 @@ types:
 testhtktools:
   type: build
   tags:
+    - linux
     - python2
   script:
     - mkdir build
