@@ -12,7 +12,7 @@ stages:
 build_app:
   stage: build
   tags:
-    - ubuntu
+    - anaconda
   script:
     - mkdir build
     - cd build
@@ -23,6 +23,6 @@ build_app:
 test_app:
   stage: test
   tags:
-    - ubuntu
+    - anaconda
   script:
     - python python/test.py
