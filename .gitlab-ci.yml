@@ -1,6 +1,4 @@
-image: ubuntu
 before_script:
-  - apt-get update && apt-get upgrade && apt-get install -y cmake python2.7 python-dev python-pip
   - pip install -r pip_install.txt
 
 
@@ -11,9 +9,9 @@ stages:
 
 build_app:
   stage: build
-  image: ubuntu
   tags:
     - python2
+    - ubuntu
   script:
     - mkdir build
     - cd build
@@ -25,5 +23,6 @@ test_app:
   stage: test
   tags:
     - python2
+    - ubuntu
   script:
     - python python/test.py
