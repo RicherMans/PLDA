@@ -1,5 +1,5 @@
+image: ubuntu
 before_script:
-  image: ubuntu
   - apt-get install -y cmake
   - pip install -r pip_install.txt
 
