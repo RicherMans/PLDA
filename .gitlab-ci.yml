@@ -4,13 +4,13 @@ before_script:
   - pip install -r pip_install.txt
 
 
-types:
+stages:
   - build
   - test
 
 
 build_app:
-  type: build
+  stage: build
   image: ubuntu
   tags:
     - python2
@@ -22,7 +22,7 @@ build_app:
 
 
 test_app:
-  type: test
+  stage: test
   tags:
     - python2
   script:
