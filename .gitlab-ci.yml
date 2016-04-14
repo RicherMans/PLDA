@@ -1,6 +1,6 @@
 before_script:
   - apt-get update
-  - apt-get upgrade && apt-get install python-pip
+  - apt-get upgrade && apt-get install -y python-pip
   - pip install -r pip_install.txt
 
 
