@@ -1,6 +1,6 @@
 before_script:
   - apt-get update
-  - apt-get upgrade && apt-get install -y cmake python-dev python-pip
+  - apt-get upgrade -y && apt-get install -y cmake python-dev python-pip
   - pip install -r pip_install.txt
 
 
