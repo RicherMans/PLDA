@@ -13,7 +13,6 @@ build_app:
   type: build
   image: ubuntu
   tags:
-    - linux
     - python2
   script:
     - mkdir build
