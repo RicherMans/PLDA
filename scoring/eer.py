@@ -1,12 +1,12 @@
 #!/usr/bin/env python
 
-import bob.measure
-import bob.core
-import sys
-import os
 import argparse
-import numpy as np
 import matplotlib.pyplot as mpl
+import os
+import sys
+
+import bob.core
+import bob.measure
 
 
 def scorefile(s):

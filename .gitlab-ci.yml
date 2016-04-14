@@ -12,7 +12,7 @@ stages:
 build_app:
   stage: build
   tags:
-    - buildpack-deps
+    - anaconda
   script:
     - mkdir build
     - cd build
@@ -23,6 +23,6 @@ build_app:
 test_app:
   stage: test
   tags:
-    - buildpack-deps
+    - anaconda
   script:
     - python python/test.py
