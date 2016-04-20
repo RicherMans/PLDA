@@ -3,7 +3,7 @@ An LDA/PLDA estimator using KALDI in python for speaker verification tasks
 
 ## Installation ##
 
-Make sure that you have KALDI compiled and installed. Further make sure that KALDI was compiled using the option --shared, during ./conigure.
+Make sure that you have KALDI compiled and installed. Further make sure that KALDI was compiled using the option --shared, during ./configure (e.g. ./configure --shared).
 Moreover the included ATLAS within KALDI is sufficient that PLDA works. If any compilation errors happen it's most likely that not all of the ATLAS libraries was installed successfully.
 
 Moreover to find KALDI correctly, please run:
@@ -60,7 +60,7 @@ plda.fit(X,Y)
 ```
 Note that fitting the model in the LDA case is done using enrolment data, while for PLDA we use background data ( which can be any data).
 
-PLDA fit does also accept two extra arguments:
+PLDA fit does also accept one extra argument:
 
 ```python
 #Transform the features first to a given target dimension. Default is keeping the dimension
@@ -68,15 +68,15 @@ targetdim=10
 plda.fit(X,Y,targetdim)
 ```
 
-LDA can then after fitting be used to directly score any incoming utterance using predict_log_prob(SAMPLE)
+LDA can then after fitting be used to directly score any incoming utterance using predict_log_proba(SAMPLE)
 
 ```python
 pred = np.random.rand(featdim)
-scores = lda.predict_log_prob(pred)
+scores = lda.predict_log_proba(pred)
 ```
-the predict_log_prob method returns a list where each element in the last represents the likelihood for the indexced class.
+the predict_log_proba method returns a list where each element in the last represents the likelihood for the indexed class.
 
-For PLDA one can also do standard normalization methods such as z-norm (other norms are not implemented yet). For this case, simply transform your enrolment vectors (labeld as ENROL_X,ENROL_Y) into the PLDA space and then normalize them using any other data ( but do not use the background data from .fit() ).
+For PLDA one can also do standard normalization methods such as z-norm (other norms are not implemented yet). For this case, simply transform your enrolment vectors (labeled as ENROL_X,ENROL_Y) into the PLDA space and then normalize them using any other data ( but do not use the background data from .fit() ).
 Generally it is recommended to have an held out set to do this estimation. The normalization procedure will then estimate the mean and variance of the scores of the enrolment models against the held out set (Otherdata).
 
 ```python
@@ -109,10 +109,9 @@ transformedtest_vectors=plda.transform(testutt_x,testutt_y)
 
 for model,modelvec in transformed_vectors.iteritems():
   for testutt,testvec in transformedtest_vectors.iteritems():
-    #model is an integer which represents the current class
+    #model is an integer which represents the current class, need for normalization
     #modelvec is a tuple consisting of (samplesize,datavector)
     #testvec is a tuple consisting of (samplesize,datavector)
     score=plda.score(model,modelvec,testvec)
-
 ```
 Note that the modelid is necessary only if one wants to normalize using z-norm.
