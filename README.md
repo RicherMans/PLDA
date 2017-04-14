@@ -69,7 +69,7 @@ plda.fit(X,Y,targetdim)
 LDA can then after fitting be used to directly score any incoming utterance using predict_log_proba(SAMPLE)
 
 ```python
-pred = np.random.rand(featdim)
+pred = np.random.rand(featdim)[np.newaxis,...]
 scores = lda.predict_log_proba(pred)
 ```
 the predict_log_proba method returns a list where each element in the last represents the likelihood for the indexed class.
