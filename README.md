@@ -39,8 +39,7 @@ from liblda import LDA
 lda = LDA()
 n_samples=500, featdim = 200
 X=np.random.rand(n_samples,featdim)
-# Uint is required
-Y=np.array(n_samples,dtype='uint')
+Y=np.random.randint(0,2,n_samples) # for binary labels
 
 lda.fit(X,Y)
 ```
@@ -53,8 +52,7 @@ plda = PLDA()
 n_samples=500, featdim = 200
 
 X=np.random.rand(n_samples,featdim)
-# Uint is required
-Y=np.array(n_samples,dtype='uint')
+Y=np.random.randint(0,2,n_samples) # for binary labels
 
 plda.fit(X,Y)
 ```
