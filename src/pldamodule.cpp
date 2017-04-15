@@ -168,7 +168,7 @@ namespace kaldi{
             it->second.data.Scale(1.0/samplesize);
             // Need to allocate on heap otherwise we can't return it to python ( will be deleted after this function ends)
             Vector<double> *transformed=new Vector<double>(featdim);
-            self->plda.TransformIvector(self->config,it->second.data,transformed);
+            self->plda.TransformIvector(self->config,it->second.data,samplesize,transformed);
             // We use the labels given in the labels array
             PyObject* spkid = PyInt_FromSize_t(it->first);
             npy_intp dimensions[1]  = {transformed->Dim()};
@@ -221,7 +221,7 @@ namespace kaldi{
             auto rowindex = matrows[i];
             Vector<double> transformed(self->plda.Dim());
             // Transform the background data
-            self->plda.TransformIvector(self->config,bkgdata.Row(rowindex),&transformed);
+            self->plda.TransformIvector(self->config,bkgdata.Row(rowindex),bkgdata.NumRows(),&transformed);
             // Temporary stores for the keys and values of the dict
             PyObject *key, *value;
             Py_ssize_t pos = 0;

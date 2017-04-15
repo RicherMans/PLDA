@@ -39,8 +39,7 @@ from liblda import LDA
 lda = LDA()
 n_samples=500, featdim = 200
 X=np.random.rand(n_samples,featdim)
-# Uint is required
-Y=np.array(n_samples,dtype='uint')
+Y=np.random.randint(0,2,n_samples).astype('uint') # for binary labels
 
 lda.fit(X,Y)
 ```
@@ -53,8 +52,7 @@ plda = PLDA()
 n_samples=500, featdim = 200
 
 X=np.random.rand(n_samples,featdim)
-# Uint is required
-Y=np.array(n_samples,dtype='uint')
+Y=np.random.randint(0,2,n_samples).astype('uint') # for binary labels
 
 plda.fit(X,Y)
 ```
@@ -71,7 +69,7 @@ plda.fit(X,Y,targetdim)
 LDA can then after fitting be used to directly score any incoming utterance using predict_log_proba(SAMPLE)
 
 ```python
-pred = np.random.rand(featdim)
+pred = np.random.rand(featdim)[np.newaxis,...]
 scores = lda.predict_log_proba(pred)
 ```
 the predict_log_proba method returns a list where each element in the last represents the likelihood for the indexed class.
